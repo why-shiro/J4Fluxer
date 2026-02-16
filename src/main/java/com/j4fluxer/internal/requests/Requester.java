@@ -25,7 +25,6 @@ public class Requester {
             MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
             body = RequestBody.create(jsonBody, mediaType);
         } else if (route.method == Route.Method.PUT || route.method == Route.Method.POST) {
-            // PUT ve POST istekleri gövde (body) ister. Veri yoksa BOŞ gövde gönderiyoruz.
             body = RequestBody.create(new byte[0], null);
         }
 

@@ -163,7 +163,7 @@ public class GatewayClient extends WebSocketClient {
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        System.err.println("[LOG] Bağlantı Kapandı: " + reason + " (Kod: " + code + ")");
+        System.err.println("[LOG] Connection Closed: " + reason + " (Kod: " + code + ")");
         if (heartbeatTimer != null) heartbeatTimer.cancel();
     }
 

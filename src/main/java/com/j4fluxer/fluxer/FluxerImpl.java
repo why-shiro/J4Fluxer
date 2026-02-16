@@ -1,4 +1,4 @@
-package com.j4fluxer.fluxer; // PAKET İSMİ DÜZELTİLDİ
+package com.j4fluxer.fluxer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.j4fluxer.entities.OnlineStatus;
