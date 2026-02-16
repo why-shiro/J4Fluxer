@@ -3,16 +3,26 @@ package com.j4fluxer.entities.user;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.j4fluxer.internal.constants.Constants;
 
+/**
+ * Represents the extended profile information of a Fluxer user.
+ * <p>
+ * This includes global metadata (Bio, Banner) as well as guild-specific
+ * membership information if available.
+ */
 public class UserProfile {
     private final User user;
     private final String bio;
     private final String pronouns;
     private final String bannerHash;
     private final String accentColor;
-
     private final String nickname;
     private final String joinedAt;
 
+    /**
+     * Internal constructor used by J4Fluxer to create a profile from JSON.
+     *
+     * @param json The root JSON node of the profile response.
+     */
     public UserProfile(JsonNode json) {
         this.user = new UserImpl(json.get("user"));
 
@@ -32,14 +42,24 @@ public class UserProfile {
         }
     }
 
+    /** @return The {@link User} associated with this profile. */
     public User getUser() { return user; }
+
+    /** @return The user's biography. */
     public String getBio() { return bio; }
+
+    /** @return The user's pronouns. */
     public String getPronouns() { return pronouns; }
 
+    /** @return The direct URL to the user's banner, or {@code null} if not set. */
     public String getBannerUrl() {
         if (bannerHash == null) return null;
         return Constants.CDN_URL + "/banners/" + user.getId() + "/" + bannerHash + ".png";
     }
 
+    /** @return The guild-specific nickname of the user, or {@code null} if not set. */
     public String getNickname() { return nickname; }
+
+    /** @return The ISO-8601 timestamp of when the user joined the guild. */
+    public String getJoinedAt() { return joinedAt; }
 }

@@ -5,9 +5,13 @@ import com.j4fluxer.fluxer.Fluxer;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Fired when multiple messages are deleted at once (e.g., via a purge command).
+ */
 public class MessageBulkDeleteEvent extends Event {
     private final List<String> messageIds = new ArrayList<>();
     private final String channelId;
+
     public MessageBulkDeleteEvent(Fluxer api, JsonNode data) {
         super(api);
         this.channelId = data.get("channel_id").asText();
@@ -17,5 +21,10 @@ public class MessageBulkDeleteEvent extends Event {
             }
         }
     }
+
+    /** @return A list of IDs for the deleted messages. */
     public List<String> getMessageIds() { return messageIds; }
+
+    /** @return The ID of the channel where messages were deleted. */
+    public String getChannelId() { return channelId; }
 }

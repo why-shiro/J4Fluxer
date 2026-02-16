@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.j4fluxer.events.Event;
 import com.j4fluxer.fluxer.Fluxer;
 
+/**
+ * Fired when a new user joins a guild.
+ */
 public class GuildMemberJoinEvent extends Event {
     private final String guildId;
     private final String userId;
@@ -16,7 +19,12 @@ public class GuildMemberJoinEvent extends Event {
         this.username = data.get("user").get("username").asText();
     }
 
+    /** @return The ID of the guild the user joined. */
     public String getGuildId() { return guildId; }
+
+    /** @return The ID of the user who joined. */
     public String getUserId() { return userId; }
+
+    /** @return The username of the user who joined. */
     public String getUsername() { return username; }
 }

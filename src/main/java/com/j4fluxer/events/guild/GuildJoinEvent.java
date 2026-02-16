@@ -7,6 +7,9 @@ import com.j4fluxer.events.Event;
 import com.j4fluxer.fluxer.Fluxer;
 import com.j4fluxer.fluxer.FluxerImpl;
 
+/**
+ * Fired when the bot joins a new guild or when a guild becomes available during startup.
+ */
 public class GuildJoinEvent extends Event {
     private final Guild guild;
 
@@ -15,5 +18,6 @@ public class GuildJoinEvent extends Event {
         this.guild = new GuildImpl(data, ((FluxerImpl)api).getRequester());
     }
 
+    /** @return The {@link Guild} object representing the joined server. */
     public Guild getGuild() { return guild; }
 }
