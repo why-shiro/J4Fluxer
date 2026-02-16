@@ -2,11 +2,14 @@ package com.j4fluxer.entities.guild;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.j4fluxer.entities.channel.*;
+import com.j4fluxer.entities.user.UserProfile;
 import com.j4fluxer.internal.json.EntityBuilder;
 import com.j4fluxer.internal.requests.Requester;
 import com.j4fluxer.internal.requests.RestAction;
 import com.j4fluxer.internal.requests.Route;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -70,6 +73,50 @@ public class GuildImpl implements Guild {
         };
     }
 
+    @Override
+    public RestAction<UserProfile> retrieveMemberProfile(String userId) {
+        Route.CompiledRoute baseRoute = Route.GET_USER_PROFILE.compile(userId);
+
+        String fullUrl = baseRoute.url + "?guild_id=" + this.id;
+        Route.CompiledRoute finalRoute = new Route.CompiledRoute(baseRoute.method, fullUrl);
+
+        return new RestAction<UserProfile>(requester, finalRoute) {
+            @Override
+            protected UserProfile handleResponse(String jsonStr) throws Exception {
+                return new UserProfile(mapper.readTree(jsonStr));
+            }
+        };
+    }
+
+    @Override
+    public RestAction<Void> timeoutMember(String userId, long durationSeconds) {
+        String isoTime = Instant.now().plus(durationSeconds, ChronoUnit.SECONDS).toString();
+
+        Route.CompiledRoute route = Route.MODIFY_MEMBER.compile(this.id, userId);
+
+        return new RestAction<Void>(requester, route) {
+            @Override
+            protected Void handleResponse(String json) { return null; }
+        }.setBody(new TimeoutPayload(isoTime));
+    }
+
+    @Override
+    public RestAction<Void> removeTimeout(String userId) {
+        Route.CompiledRoute route = Route.MODIFY_MEMBER.compile(this.id, userId);
+
+        return new RestAction<Void>(requester, route) {
+            @Override
+            protected Void handleResponse(String json) { return null; }
+        }.setBody(new TimeoutPayload(null));
+    }
+
+    private static class TimeoutPayload {
+        public String communication_disabled_until;
+
+        public TimeoutPayload(String timestamp) {
+            this.communication_disabled_until = timestamp;
+        }
+    }
 
     @Override
     public RestAction<Void> addRoleToMember(String userId, String roleId) {
@@ -124,6 +171,49 @@ public class GuildImpl implements Guild {
     @Override
     public RestAction<VoiceChannel> createVoiceChannel(String name) {
         return createChannel(name, ChannelType.VOICE, VoiceChannel.class);
+    }
+
+    @Override
+    public RestAction<Void> banMember(String userId, String reason) {
+        return banMember(userId, 0, 0, reason);
+    }
+
+    @Override
+    public RestAction<Void> banMember(String userId, int deleteMessageDays, long durationSeconds, String reason) {
+        Route.CompiledRoute route = Route.BAN_MEMBER.compile(this.id, userId);
+
+        BanPayload payload = new BanPayload(deleteMessageDays, durationSeconds, reason);
+
+        return new RestAction<Void>(requester, route) {
+            @Override
+            protected Void handleResponse(String json) {
+                return null;
+            }
+        }.setBody(payload);
+    }
+
+    @Override
+    public RestAction<Void> unbanMember(String userId) {
+        Route.CompiledRoute route = Route.UNBAN_MEMBER.compile(this.id, userId);
+
+        return new RestAction<Void>(requester, route) {
+            @Override
+            protected Void handleResponse(String json) {
+                return null;
+            }
+        };
+    }
+
+    private static class BanPayload {
+        public int delete_message_days;    // Kaç günlük mesaj silinsin?
+        public String reason;              // Sebep
+        public long ban_duration_seconds;  // Ne kadar süre banlı kalsın? (0 = Sonsuz)
+
+        public BanPayload(int deleteMessageDays, long durationSeconds, String reason) {
+            this.delete_message_days = deleteMessageDays;
+            this.reason = reason;
+            this.ban_duration_seconds = durationSeconds;
+        }
     }
 
     private <T extends Channel> RestAction<T> createChannel(String name, ChannelType type, Class<T> clazz) {

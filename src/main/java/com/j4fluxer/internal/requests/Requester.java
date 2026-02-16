@@ -1,5 +1,6 @@
 package com.j4fluxer.internal.requests;
 
+import com.j4fluxer.internal.constants.Constants;
 import okhttp3.*;
 import java.io.IOException;
 
@@ -13,34 +14,36 @@ public class Requester {
     }
 
     public Response execute(Route.CompiledRoute route, String jsonBody) throws IOException {
-
         String authHeader = token;
         if (!token.startsWith("Bot ") && !token.startsWith("flx_")) {
             authHeader = "Bot " + token;
         }
 
-        String userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+        RequestBody body = null;
+
+        if (jsonBody != null) {
+            MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
+            body = RequestBody.create(jsonBody, mediaType);
+        } else if (route.method == Route.Method.PUT || route.method == Route.Method.POST) {
+            // PUT ve POST istekleri gövde (body) ister. Veri yoksa BOŞ gövde gönderiyoruz.
+            body = RequestBody.create(new byte[0], null);
+        }
 
         Request.Builder builder = new Request.Builder()
                 .url(route.url)
                 .header("Authorization", authHeader)
-                .header("User-Agent", userAgent)
-                .header("Content-Type", "application/json");
-
-        if (jsonBody != null) {
-            MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
-            RequestBody body = RequestBody.create(jsonBody, mediaType);
-            builder.method(route.method.name(), body);
-        } else {
-            builder.method(route.method.name(), null);
-        }
+                .header("User-Agent", Constants.USER_AGENT)
+                .method(route.method.name(), body);
 
         Response response = httpClient.newCall(builder.build()).execute();
 
         if (!response.isSuccessful()) {
-            System.err.println("❌ API Hatası: " + response.code() + " " + response.message());
+            System.err.println("API Error [" + response.code() + "]");
             System.err.println("URL: " + route.url);
-            System.err.println("Auth: " + authHeader);
+            System.err.println("Method: " + route.method);
+            try {
+                System.err.println("Response: " + response.peekBody(Long.MAX_VALUE).string());
+            } catch (Exception ignored) {}
         }
 
         return response;

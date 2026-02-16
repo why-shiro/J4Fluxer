@@ -5,4 +5,6 @@ public interface User {
     String getUsername();
     String getDiscriminator();
     boolean isBot();
+    String getAvatarHash();
+    String getAvatarUrl(); // Link dönecek
 }

@@ -175,18 +175,30 @@ public class GatewayClient extends WebSocketClient {
     private void sendIdentify() {
         JSONObject payload = new JSONObject();
         payload.put("op", 2);
+
         JSONObject d = new JSONObject();
-        d.put("token", token);
+
+        String authToken = token;
+        if (!token.startsWith("Bot ")) {
+            authToken = "Bot " + token;
+        }
+        d.put("token", authToken);
+
+        d.put("intents", 0);
+
         JSONObject properties = new JSONObject();
         properties.put("os", System.getProperty("os.name"));
-        properties.put("browser", "Fluxer4J");
-        properties.put("device", "Fluxer4J");
+        properties.put("browser", "J4Fluxer");
+        properties.put("device", "J4Fluxer");
         d.put("properties", properties);
+
         JSONObject presence = new JSONObject();
         presence.put("status", "online");
         presence.put("afk", false);
         d.put("presence", presence);
+
         payload.put("d", d);
+
         send(payload.toString());
     }
 

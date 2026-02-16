@@ -9,6 +9,8 @@ import com.j4fluxer.internal.requests.Requester;
 import com.j4fluxer.internal.requests.RestAction;
 import com.j4fluxer.internal.requests.Route;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -66,6 +68,33 @@ public class MessageImpl implements Message {
     @Override
     public List<User> getMentions() {
         return Collections.unmodifiableList(mentions);
+    }
+    @Override
+    public RestAction<Void> addReaction(String emoji) {
+        return executeReaction(emoji, Route.ADD_REACTION);
+    }
+
+    @Override
+    public RestAction<Void> removeReaction(String emoji) {
+        return executeReaction(emoji, Route.REMOVE_REACTION);
+    }
+
+    private RestAction<Void> executeReaction(String emoji, Route routeType) {
+        String encodedEmoji;
+        try {
+            encodedEmoji = URLEncoder.encode(emoji, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            encodedEmoji = emoji;
+            e.printStackTrace();
+        }
+
+        Route.CompiledRoute route = routeType.compile(this.channelId, this.id, encodedEmoji);
+        return new RestAction<Void>(requester, route) {
+            @Override
+            protected Void handleResponse(String json) {
+                return null; // 204 No Content döner
+            }
+        };
     }
 
 

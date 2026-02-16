@@ -3,7 +3,6 @@ package com.j4fluxer.internal.requests;
 import com.j4fluxer.internal.constants.Constants;
 
 public class Route {
-    public static final Route GET_ME = new Route(Method.GET, "/users/@me");
     public static final Route CREATE_CHANNEL = new Route(Method.POST, "/guilds/{guild_id}/channels");
     public static final Route SEND_MESSAGE = new Route(Method.POST, "/channels/{channel_id}/messages");
     public static final Route EDIT_MESSAGE = new Route(Method.PATCH, "/channels/{channel_id}/messages/{message_id}");
@@ -17,6 +16,13 @@ public class Route {
     public static final Route KICK_MEMBER = new Route(Method.DELETE, "/guilds/{guild_id}/members/{user_id}");
     public static final Route ADD_ROLE = new Route(Method.PUT, "/guilds/{guild_id}/members/{user_id}/roles/{role_id}");
     public static final Route REMOVE_ROLE = new Route(Method.DELETE, "/guilds/{guild_id}/members/{user_id}/roles/{role_id}");
+    public static final Route ADD_REACTION = new Route(Method.PUT, "/channels/{channel_id}/messages/{message_id}/reactions/{emoji}/@me");
+    public static final Route REMOVE_REACTION = new Route(Method.DELETE, "/channels/{channel_id}/messages/{message_id}/reactions/{emoji}/@me");
+    public static final Route GET_USER_PROFILE = new Route(Method.GET, "/users/{user_id}/profile");
+    public static final Route MODIFY_MEMBER = new Route(Method.PATCH, "/guilds/{guild_id}/members/{user_id}");
+    public static final Route BAN_MEMBER = new Route(Method.PUT, "/guilds/{guild_id}/bans/{user_id}");
+    public static final Route UNBAN_MEMBER = new Route(Method.DELETE, "/guilds/{guild_id}/bans/{user_id}");
+
 
     private final Method method;
     private final String path;

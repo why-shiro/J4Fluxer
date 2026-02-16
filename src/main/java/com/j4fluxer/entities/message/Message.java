@@ -10,14 +10,13 @@ public interface Message {
     String getId();
     String getContent();
     String getChannelId();
-
     User getAuthor();
     Member getMember();
-
     String getGuildId();
-
     List<User> getMentions();
-
     RestAction<Message> edit(String newContent);
     RestAction<Void> delete();
+    RestAction<Void> addReaction(String emoji);
+    RestAction<Void> removeReaction(String emoji);
+
 }
