@@ -4,6 +4,7 @@
 ![Java](https://img.shields.io/badge/Java-25-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Alpha-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+[![](https://jitpack.io/v/why-shiro/J4Fluxer.svg)](https://jitpack.io/#why-shiro/J4Fluxer)
 
 **J4Fluxer** is a high-performance, asynchronous, and event-driven Java library developed for the [Fluxer](https://fluxer.app) platform.
 
