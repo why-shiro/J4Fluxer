@@ -37,3 +37,6 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Main Class ###
+src/main/java/com/j4fluxer/Main.java

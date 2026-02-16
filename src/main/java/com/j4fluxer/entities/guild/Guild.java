@@ -16,4 +16,5 @@ public interface Guild {
     RestAction<List<Channel>> retrieveChannels();
     RestAction<TextChannel> createTextChannel(String name);
     RestAction<VoiceChannel> createVoiceChannel(String name);
+    RestAction<Void> kickMember(String userId);
 }

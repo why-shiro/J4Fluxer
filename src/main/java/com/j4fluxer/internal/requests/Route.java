@@ -14,6 +14,7 @@ public class Route {
     public static final Route DELETE_MESSAGE = new Route(Method.DELETE, "/channels/{channel_id}/messages/{message_id}");
     public static final Route GET_GUILD = new Route(Method.GET, "/guilds/{guild_id}");
     public static final Route CREATE_GUILD = new Route(Method.POST, "/guilds");
+    public static final Route KICK_MEMBER = new Route(Method.DELETE, "/guilds/{guild_id}/members/{user_id}");
 
     private final Method method;
     private final String path;

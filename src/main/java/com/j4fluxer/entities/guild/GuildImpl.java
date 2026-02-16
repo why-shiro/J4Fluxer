@@ -60,6 +60,18 @@ public class GuildImpl implements Guild {
     }
 
     @Override
+    public RestAction<Void> kickMember(String userId) {
+        Route.CompiledRoute route = Route.KICK_MEMBER.compile(this.id, userId);
+
+        return new RestAction<Void>(requester, route) {
+            @Override
+            protected Void handleResponse(String json) {
+                return null;
+            }
+        };
+    }
+
+    @Override
     public RestAction<TextChannel> createTextChannel(String name) {
         return createChannel(name, ChannelType.TEXT, TextChannel.class);
     }
