@@ -15,6 +15,8 @@ public class Route {
     public static final Route GET_GUILD = new Route(Method.GET, "/guilds/{guild_id}");
     public static final Route CREATE_GUILD = new Route(Method.POST, "/guilds");
     public static final Route KICK_MEMBER = new Route(Method.DELETE, "/guilds/{guild_id}/members/{user_id}");
+    public static final Route ADD_ROLE = new Route(Method.PUT, "/guilds/{guild_id}/members/{user_id}/roles/{role_id}");
+    public static final Route REMOVE_ROLE = new Route(Method.DELETE, "/guilds/{guild_id}/members/{user_id}/roles/{role_id}");
 
     private final Method method;
     private final String path;

@@ -2,6 +2,8 @@ package com.j4fluxer.internal.gateway;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.j4fluxer.entities.OnlineStatus;
+import com.j4fluxer.entities.guild.GuildImpl;
 import com.j4fluxer.entities.message.Message;
 import com.j4fluxer.entities.message.MessageImpl;
 import com.j4fluxer.events.Event;
@@ -9,10 +11,7 @@ import com.j4fluxer.events.guild.*;
 import com.j4fluxer.events.guild.member.GuildMemberJoinEvent;
 import com.j4fluxer.events.guild.member.GuildMemberLeaveEvent;
 import com.j4fluxer.events.guild.member.GuildMemberUpdateEvent;
-import com.j4fluxer.events.message.MessageBulkDeleteEvent;
-import com.j4fluxer.events.message.MessageDeleteEvent;
-import com.j4fluxer.events.message.MessageReceivedEvent;
-import com.j4fluxer.events.message.MessageUpdateEvent;
+import com.j4fluxer.events.message.*;
 import com.j4fluxer.events.session.ReadyEvent;
 import com.j4fluxer.events.user.TypingStartEvent;
 import com.j4fluxer.fluxer.FluxerImpl;
@@ -40,8 +39,29 @@ public class GatewayClient extends WebSocketClient {
 
     @Override
     public void onOpen(ServerHandshake handshakedata) {
-        System.out.println("[LOG] Gateway Bağlantısı Kuruldu.");
+        System.out.println("[LOG] Gateway Connection Successful.");
         sendIdentify();
+    }
+
+    public void setPresence(OnlineStatus status) {
+        if (!isOpen()) {
+            System.err.println("[ERR] Gateway Client Not Open.");
+            return;
+        }
+
+        JSONObject payload = new JSONObject();
+        payload.put("op", 3);
+
+        JSONObject d = new JSONObject();
+        d.put("since", JSONObject.NULL);
+        d.put("activities", new org.json.JSONArray());
+        d.put("status", status.getKey());
+        d.put("afk", false);
+
+        payload.put("d", d);
+
+        send(payload.toString());
+        System.out.println("[GATEWAY] Status Changed: " + status.getKey());
     }
 
     @Override
@@ -51,32 +71,27 @@ public class GatewayClient extends WebSocketClient {
             int op = json.optInt("op", -1);
             String type = json.optString("t");
 
-            // Veri (d) bazen null gelebilir (Heartbeat ACK gibi)
             JsonNode d = null;
             if (json.has("d") && !json.isNull("d")) {
                 d = mapper.readTree(json.get("d").toString());
             }
 
-            // --- 1. KALP ATIŞI AYARLAMASI (OpCode 10) ---
             if (op == 10 && d != null) {
                 long interval = d.get("heartbeat_interval").asLong();
                 startHeartbeat(interval);
                 return; // Başka işlem yapma
             }
 
-            // Olay tipi yoksa işlem yapma
             if (type == null || type.isEmpty()) return;
 
             Event event = null;
 
-            // --- 2. OLAY YÖNETİMİ (EVENT DISPATCHER) ---
             switch (type) {
                 case "READY":
-                    System.out.println("[LOG] Giriş Başarılı: " + d.get("user").get("username").asText());
+                    System.out.println("[LOG] Login Successful: " + d.get("user").get("username").asText());
                     event = new ReadyEvent(api, d);
                     break;
 
-                // --- MESAJ OLAYLARI ---
                 case "MESSAGE_CREATE":
                     Message msg = new MessageImpl(d, api.getRequester());
                     event = new MessageReceivedEvent(api, msg);
@@ -91,19 +106,18 @@ public class GatewayClient extends WebSocketClient {
                     event = new MessageBulkDeleteEvent(api, d);
                     break;
 
-                // --- SUNUCU OLAYLARI ---
                 case "GUILD_CREATE":
-                    // Bot açıldığında veya yeni sunucuya girdiğinde
+                    GuildImpl guild =
+                            new GuildImpl(d, api.getRequester());
+                    api.cacheGuild(guild);
                     event = new GuildJoinEvent(api, d);
                     break;
                 case "GUILD_DELETE":
-                    // unavailable true ise sunucu çökmüştür, değilse atılmışızdır
                     if (!d.has("unavailable") || !d.get("unavailable").asBoolean()) {
                         event = new GuildLeaveEvent(api, d);
                     }
                     break;
 
-                // --- ÜYE OLAYLARI ---
                 case "GUILD_MEMBER_ADD":
                     event = new GuildMemberJoinEvent(api, d);
                     break;
@@ -114,40 +128,35 @@ public class GatewayClient extends WebSocketClient {
                     event = new GuildMemberUpdateEvent(api, d);
                     break;
 
-                // --- YASAKLAMA (BAN) OLAYLARI ---
                 case "GUILD_BAN_ADD":
                     event = new GuildBanEvent(api, d, true); // True = Banlandı
                     break;
                 case "GUILD_BAN_REMOVE":
                     event = new GuildBanEvent(api, d, false); // False = Ban açıldı
                     break;
-
-                // --- KULLANICI OLAYLARI ---
+                case "MESSAGE_REACTION_ADD":
+                    event = new MessageReactionAddEvent(api, d);
+                    break;
                 case "TYPING_START":
                     event = new TypingStartEvent(api, d);
                     break;
 
-                // --- ROL OLAYLARI ---
                 case "GUILD_ROLE_CREATE":
                     event = new RoleCreateEvent(api, d);
                     break;
                 case "GUILD_ROLE_DELETE":
                     event = new RoleDeleteEvent(api, d);
                     break;
-
                 default:
-                    // Tanımlamadığımız diğer olaylar (Göz ardı et)
-                    // System.out.println("İşlenmeyen Event: " + type);
                     break;
             }
 
-            // Eğer bir event oluştuysa sisteme ateşle
             if (event != null) {
                 api.fireEvent(event);
             }
 
         } catch (Exception e) {
-            System.err.println("[ERR] Paket Hatası: " + e.getMessage());
+            System.err.println("[ERR] Packet Error: " + e.getMessage());
             e.printStackTrace();
         }
     }

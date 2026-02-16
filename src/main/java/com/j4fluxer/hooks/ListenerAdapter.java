@@ -5,10 +5,7 @@ import com.j4fluxer.events.guild.*;
 import com.j4fluxer.events.guild.member.GuildMemberJoinEvent;
 import com.j4fluxer.events.guild.member.GuildMemberLeaveEvent;
 import com.j4fluxer.events.guild.member.GuildMemberUpdateEvent;
-import com.j4fluxer.events.message.MessageBulkDeleteEvent;
-import com.j4fluxer.events.message.MessageDeleteEvent;
-import com.j4fluxer.events.message.MessageReceivedEvent;
-import com.j4fluxer.events.message.MessageUpdateEvent;
+import com.j4fluxer.events.message.*;
 import com.j4fluxer.events.session.ReadyEvent;
 import com.j4fluxer.events.user.TypingStartEvent;
 
@@ -25,6 +22,7 @@ public abstract class ListenerAdapter implements EventListener {
         else if (event instanceof GuildMemberJoinEvent) onMemberJoin((GuildMemberJoinEvent) event);
         else if (event instanceof GuildMemberLeaveEvent) onMemberLeave((GuildMemberLeaveEvent) event);
         else if (event instanceof GuildMemberUpdateEvent) onMemberUpdate((GuildMemberUpdateEvent) event);
+        else if (event instanceof MessageReactionAddEvent) onMessageReactionAdd((MessageReactionAddEvent) event);
         else if (event instanceof GuildBanEvent) {
             if (((GuildBanEvent) event).isBanned()) onGuildBan((GuildBanEvent) event);
             else onGuildUnban((GuildBanEvent) event);
@@ -49,4 +47,5 @@ public abstract class ListenerAdapter implements EventListener {
     public void onTypingStart(TypingStartEvent event) {}
     public void onRoleCreate(RoleCreateEvent event) {}
     public void onRoleDelete(RoleDeleteEvent event) {}
+    public void onMessageReactionAdd(MessageReactionAddEvent event) {}
 }

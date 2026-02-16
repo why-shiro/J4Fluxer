@@ -8,13 +8,16 @@ import com.j4fluxer.internal.requests.RestAction;
 import com.j4fluxer.internal.requests.Route;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class GuildImpl implements Guild {
     private final Requester requester;
     private final String id;
     private final String name;
     private final String ownerId;
+    private final Map<String, Role> roles = new HashMap<>();
 
     public GuildImpl(JsonNode json, Requester requester) {
         this.requester = requester;
@@ -22,6 +25,12 @@ public class GuildImpl implements Guild {
         this.name = json.has("name") ? json.get("name").asText() : "";
         this.ownerId = json.has("owner_id") && !json.get("owner_id").isNull()
                 ? json.get("owner_id").asText() : null;
+        if (json.has("roles") && json.get("roles").isArray()) {
+            for (JsonNode roleNode : json.get("roles")) {
+                Role role = new Role(roleNode);
+                this.roles.put(role.getId(), role);
+            }
+        }
     }
 
     public GuildImpl(String id, Requester requester) {
@@ -30,6 +39,8 @@ public class GuildImpl implements Guild {
         this.name = "";
         this.ownerId = null;
     }
+
+
 
     @Override public String getId() { return id; }
     @Override public String getName() { return name; }
@@ -58,6 +69,40 @@ public class GuildImpl implements Guild {
             }
         };
     }
+
+
+    @Override
+    public RestAction<Void> addRoleToMember(String userId, String roleId) {
+        Route.CompiledRoute route = Route.ADD_ROLE.compile(this.id, userId, roleId);
+        return new RestAction<Void>(requester, route) {
+            @Override
+            protected Void handleResponse(String json) {
+                return null;
+            }
+        };
+    }
+
+    @Override
+    public RestAction<Void> removeRoleFromMember(String userId, String roleId) {
+        Route.CompiledRoute route = Route.REMOVE_ROLE.compile(this.id, userId, roleId);
+
+        return new RestAction<Void>(requester, route) {
+            @Override
+            protected Void handleResponse(String json) {
+                return null;
+            }
+        };
+    }
+    @Override
+    public Role getRoleById(String id) {
+        return roles.get(id);
+    }
+
+    @Override
+    public List<Role> getRoles() {
+        return new ArrayList<>(roles.values());
+    }
+
 
     @Override
     public RestAction<Void> kickMember(String userId) {

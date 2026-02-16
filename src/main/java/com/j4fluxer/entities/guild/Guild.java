@@ -17,4 +17,8 @@ public interface Guild {
     RestAction<TextChannel> createTextChannel(String name);
     RestAction<VoiceChannel> createVoiceChannel(String name);
     RestAction<Void> kickMember(String userId);
+    RestAction<Void> addRoleToMember(String userId, String roleId);
+    RestAction<Void> removeRoleFromMember(String userId, String roleId);
+    Role getRoleById(String id);
+    List<Role> getRoles();
 }

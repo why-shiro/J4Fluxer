@@ -1,6 +1,7 @@
 package com.j4fluxer.fluxer; // PAKET İSMİ DÜZELTİLDİ
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.j4fluxer.entities.OnlineStatus;
 import com.j4fluxer.entities.guild.Guild;
 import com.j4fluxer.entities.guild.GuildImpl;
 import com.j4fluxer.internal.json.EntityBuilder;
@@ -14,6 +15,8 @@ import okhttp3.Response;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class FluxerImpl implements Fluxer {
     private final Requester requester;
@@ -21,6 +24,7 @@ public class FluxerImpl implements Fluxer {
     private final ObjectMapper mapper = new ObjectMapper();
     private final List<EventListener> listeners = new ArrayList<>();
     private GatewayClient gateway;
+    private final Map<String, Guild> guildCache = new ConcurrentHashMap<>();
 
     public FluxerImpl(String token) {
         this.requester = new Requester(token);
@@ -55,18 +59,28 @@ public class FluxerImpl implements Fluxer {
 
     @Override
     public Guild getGuildById(String id) {
+        if (guildCache.containsKey(id)) {
+            return guildCache.get(id);
+        }
+
         try {
             Route.CompiledRoute route = Route.GET_GUILD.compile(id);
             Response response = requester.execute(route, null);
-
             if (response.isSuccessful() && response.body() != null) {
-                return new GuildImpl(mapper.readTree(response.body().string()), requester);
+                GuildImpl guild = new GuildImpl(mapper.readTree(response.body().string()), requester);
+                guildCache.put(id, guild);
+                return guild;
             }
             return null;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public void cacheGuild(Guild guild) {
+        guildCache.put(guild.getId(), guild);
+        System.out.println("[CACHE] Server Cached: " + guild.getName());
     }
 
     @Override
@@ -78,6 +92,13 @@ public class FluxerImpl implements Fluxer {
                 return new GuildImpl(mapper.readTree(jsonStr), requester);
             }
         }.setBody(new GuildCreatePayload(name));
+    }
+
+    @Override
+    public void setStatus(OnlineStatus status) {
+        if (gateway != null) {
+            gateway.setPresence(status);
+        }
     }
 
     public Requester getRequester() {
