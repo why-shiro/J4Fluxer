@@ -40,9 +40,14 @@ public class MessageReceivedEvent extends Event {
     public TextChannel getChannel() {
         if (message.getGuildId() == null) return null;
 
+        Guild guild = api.getGuildById(message.getGuildId());
+
+        if (guild != null) {
+            return guild.getTextChannelById(message.getChannelId());
+        }
+
         FluxerImpl core = (FluxerImpl) api;
         Guild tempGuild = new GuildImpl(message.getGuildId(), core.getRequester());
-
         return new TextChannelImpl(message.getChannelId(), tempGuild, core.getRequester());
     }
 }

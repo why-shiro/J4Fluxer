@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class GuildImpl implements Guild {
     private final Requester requester;
@@ -21,17 +22,39 @@ public class GuildImpl implements Guild {
     private final String name;
     private final String ownerId;
     private final Map<String, Role> roles = new HashMap<>();
+    private final Map<String, GuildChannel> channelCache = new ConcurrentHashMap<>();
 
     public GuildImpl(JsonNode json, Requester requester) {
         this.requester = requester;
         this.id = json.get("id").asText();
         this.name = json.has("name") ? json.get("name").asText() : "";
-        this.ownerId = json.has("owner_id") && !json.get("owner_id").isNull()
-                ? json.get("owner_id").asText() : null;
+        this.ownerId = json.has("owner_id") && !json.get("owner_id").isNull() ? json.get("owner_id").asText() : null;
+
         if (json.has("roles") && json.get("roles").isArray()) {
             for (JsonNode roleNode : json.get("roles")) {
                 Role role = new Role(roleNode);
                 this.roles.put(role.getId(), role);
+            }
+        }
+
+        if (json.has("channels") && json.get("channels").isArray()) {
+            for (JsonNode channelNode : json.get("channels")) {
+                int typeId = channelNode.has("type") ? channelNode.get("type").asInt() : -1;
+                ChannelType type = ChannelType.fromKey(typeId);
+
+                GuildChannel channel = null;
+
+                if (type == ChannelType.TEXT) {
+                    channel = new TextChannelImpl(channelNode, this, requester);
+                } else if (type == ChannelType.VOICE) {
+                    channel = new VoiceChannelImpl(channelNode, this, requester);
+                } else if (type == ChannelType.CATEGORY) {
+                    channel = new CategoryImpl(channelNode, this, requester);
+                }
+
+                if (channel != null) {
+                    channelCache.put(channel.getId(), channel);
+                }
             }
         }
     }
@@ -49,22 +72,31 @@ public class GuildImpl implements Guild {
     @Override public String getName() { return name; }
     @Override public String getOwnerId() { return ownerId; }
 
+
     @Override
     public GuildChannel getGuildChannelById(String id) {
-        // In the future, this should check cache and return the specific type (Text/Voice/Category)
-        // For now, returning a TextChannelImpl as a generic GuildChannel wrapper is safe for ID operations.
+        if (channelCache.containsKey(id)) {
+            return channelCache.get(id);
+        }
         return new TextChannelImpl(id, this, requester);
     }
 
     @Override
-    public TextChannel getTextChannelById(String channelId) {
-        return new TextChannelImpl(channelId, this, requester);
+    public TextChannel getTextChannelById(String id) {
+        if (channelCache.containsKey(id) && channelCache.get(id) instanceof TextChannel) {
+            return (TextChannel) channelCache.get(id);
+        }
+        return new TextChannelImpl(id, this, requester);
     }
 
     @Override
     public Category getCategoryById(String id) {
+        if (channelCache.containsKey(id) && channelCache.get(id) instanceof Category) {
+            return (Category) channelCache.get(id);
+        }
         return new CategoryImpl(id, this, requester);
     }
+
 
     @Override
     public RestAction<List<Channel>> retrieveChannels() {
@@ -221,6 +253,29 @@ public class GuildImpl implements Guild {
         return new RestAction<Void>(requester, route) {
             @Override protected Void handleResponse(String json) { return null; }
         }.setBody(body);
+    }
+
+    public void updateChannelCache(JsonNode channelNode) {
+        int typeId = channelNode.has("type") ? channelNode.get("type").asInt() : -1;
+        ChannelType type = ChannelType.fromKey(typeId);
+
+        GuildChannel channel = null;
+
+        if (type == ChannelType.TEXT) {
+            channel = new TextChannelImpl(channelNode, this, requester);
+        } else if (type == ChannelType.VOICE) {
+            channel = new VoiceChannelImpl(channelNode, this, requester);
+        } else if (type == ChannelType.CATEGORY) {
+            channel = new CategoryImpl(channelNode, this, requester);
+        }
+
+        if (channel != null) {
+            channelCache.put(channel.getId(), channel);
+        }
+    }
+
+    public void removeChannelFromCache(String channelId) {
+        channelCache.remove(channelId);
     }
 
     @Override public RestAction<Void> setName(String name) { return modifyGuild("name", name); }

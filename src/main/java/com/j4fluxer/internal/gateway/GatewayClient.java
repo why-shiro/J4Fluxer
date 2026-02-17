@@ -120,6 +120,30 @@ public class GatewayClient extends WebSocketClient {
                     event = new MessageReactionAddEvent(api, d);
                     break;
 
+                case "CHANNEL_CREATE":
+                case "CHANNEL_UPDATE":
+                    if (d.has("guild_id")) {
+                        String gId = d.get("guild_id").asText();
+                        GuildImpl guild = (GuildImpl) api.getGuildById(gId);
+                        if (guild != null) {
+                            guild.updateChannelCache(d);
+                        }
+                    }
+                    // TODO: Create ChannelCreateEvent / ChannelUpdateEvent classes and fire here
+                    break;
+
+                case "CHANNEL_DELETE":
+                    if (d.has("guild_id")) {
+                        String gId = d.get("guild_id").asText();
+                        String cId = d.get("id").asText();
+                        GuildImpl guild = (GuildImpl) api.getGuildById(gId);
+                        if (guild != null) {
+                            guild.removeChannelFromCache(cId);
+                        }
+                    }
+                    // TODO: Create ChannelDeleteEvent class and fire here
+                    break;
+
                 // --- GUILD EVENTS ---
                 case "GUILD_CREATE":
                     // Cache the guild immediately upon receiving data
