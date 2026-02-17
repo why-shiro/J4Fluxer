@@ -40,13 +40,11 @@ You can install J4Fluxer using **JitPack**.
 
 2. Add the dependency:
 ```xml
-<dependencies>
-  <dependency>
-      <groupId>com.github.why-shiro</groupId>
-      <artifactId>J4Fluxer</artifactId>
-      <version>TAG</version> <!-- Replace 'TAG' with the latest release version -->
-  </dependency>
-</dependencies>
+<dependency>
+	    <groupId>com.github.why-shiro</groupId>
+	    <artifactId>J4Fluxer</artifactId>
+	    <version>alpha-0.1.1</version>
+	</dependency>
 ```
 
 ### Gradle
@@ -60,8 +58,8 @@ dependencyResolutionManagement {
 }
 
 dependencies {
-    implementation 'com.github.why-shiro:J4Fluxer:TAG'
-}
+	        implementation 'com.github.why-shiro:J4Fluxer:alpha-0.1.1'
+	}
 ```
 
 ---
