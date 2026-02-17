@@ -58,6 +58,12 @@ public class Route {
     /** GET request to retrieve information about the current bot user. */
     public static final Route GET_ME = new Route(Method.GET, "/users/@me");
 
+    public static final Route MODIFY_CHANNEL = new Route(Method.PATCH, "/channels/{channel_id}");
+
+    public static final Route CREATE_INVITE = new Route(Method.POST, "/channels/{channel_id}/invites");
+
+    public static final Route MODIFY_GUILD = new Route(Method.PATCH, "/guilds/{guild_id}");
+
 
     private final Method method;
     private final String path;

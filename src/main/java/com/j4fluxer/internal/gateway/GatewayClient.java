@@ -23,6 +23,10 @@ import java.net.URI;
 import java.util.Timer;
 import java.util.TimerTask;
 
+/**
+ * Handles the WebSocket connection to the Fluxer Gateway.
+ * Manages heartbeats, identification, and event dispatching.
+ */
 public class GatewayClient extends WebSocketClient {
     private final String token;
     private final FluxerImpl api;
@@ -43,6 +47,10 @@ public class GatewayClient extends WebSocketClient {
         sendIdentify();
     }
 
+    /**
+     * Sends a Presence Update (OpCode 3) to change the bot's status.
+     * @param status The new status (ONLINE, DND, IDLE, etc.)
+     */
     public void setPresence(OnlineStatus status) {
         if (!isOpen()) {
             System.err.println("[ERR] Gateway Client Not Open.");
@@ -76,22 +84,25 @@ public class GatewayClient extends WebSocketClient {
                 d = mapper.readTree(json.get("d").toString());
             }
 
+            // --- 1. HEARTBEAT SETUP (OpCode 10) ---
             if (op == 10 && d != null) {
                 long interval = d.get("heartbeat_interval").asLong();
                 startHeartbeat(interval);
-                return; // Başka işlem yapma
+                return;
             }
 
             if (type == null || type.isEmpty()) return;
 
             Event event = null;
 
+            // --- 2. EVENT DISPATCHING ---
             switch (type) {
                 case "READY":
                     System.out.println("[LOG] Login Successful: " + d.get("user").get("username").asText());
                     event = new ReadyEvent(api, d);
                     break;
 
+                // --- MESSAGE EVENTS ---
                 case "MESSAGE_CREATE":
                     Message msg = new MessageImpl(d, api.getRequester());
                     event = new MessageReceivedEvent(api, msg);
@@ -105,10 +116,14 @@ public class GatewayClient extends WebSocketClient {
                 case "MESSAGE_DELETE_BULK":
                     event = new MessageBulkDeleteEvent(api, d);
                     break;
+                case "MESSAGE_REACTION_ADD":
+                    event = new MessageReactionAddEvent(api, d);
+                    break;
 
+                // --- GUILD EVENTS ---
                 case "GUILD_CREATE":
-                    GuildImpl guild =
-                            new GuildImpl(d, api.getRequester());
+                    // Cache the guild immediately upon receiving data
+                    GuildImpl guild = new GuildImpl(d, api.getRequester());
                     api.cacheGuild(guild);
                     event = new GuildJoinEvent(api, d);
                     break;
@@ -118,6 +133,7 @@ public class GatewayClient extends WebSocketClient {
                     }
                     break;
 
+                // --- MEMBER EVENTS ---
                 case "GUILD_MEMBER_ADD":
                     event = new GuildMemberJoinEvent(api, d);
                     break;
@@ -128,26 +144,29 @@ public class GatewayClient extends WebSocketClient {
                     event = new GuildMemberUpdateEvent(api, d);
                     break;
 
+                // --- BAN EVENTS ---
                 case "GUILD_BAN_ADD":
-                    event = new GuildBanEvent(api, d, true); // True = Banlandı
+                    event = new GuildBanEvent(api, d, true); // True = Banned
                     break;
                 case "GUILD_BAN_REMOVE":
-                    event = new GuildBanEvent(api, d, false); // False = Ban açıldı
-                    break;
-                case "MESSAGE_REACTION_ADD":
-                    event = new MessageReactionAddEvent(api, d);
-                    break;
-                case "TYPING_START":
-                    event = new TypingStartEvent(api, d);
+                    event = new GuildBanEvent(api, d, false); // False = Unbanned
                     break;
 
+                // --- ROLE EVENTS ---
                 case "GUILD_ROLE_CREATE":
                     event = new RoleCreateEvent(api, d);
                     break;
                 case "GUILD_ROLE_DELETE":
                     event = new RoleDeleteEvent(api, d);
                     break;
+
+                // --- USER EVENTS ---
+                case "TYPING_START":
+                    event = new TypingStartEvent(api, d);
+                    break;
+
                 default:
+                    // Ignored events
                     break;
             }
 
@@ -156,14 +175,14 @@ public class GatewayClient extends WebSocketClient {
             }
 
         } catch (Exception e) {
-            System.err.println("[ERR] Packet Error: " + e.getMessage());
+            System.err.println("[ERR] Packet Processing Error: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        System.err.println("[LOG] Connection Closed: " + reason + " (Kod: " + code + ")");
+        System.err.println("[LOG] Connection Closed: " + reason + " (Code: " + code + ")");
         if (heartbeatTimer != null) heartbeatTimer.cancel();
     }
 
@@ -184,6 +203,7 @@ public class GatewayClient extends WebSocketClient {
         }
         d.put("token", authToken);
 
+        // Intents can be set here if Fluxer implements them in the future
         d.put("intents", 0);
 
         JSONObject properties = new JSONObject();

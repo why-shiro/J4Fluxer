@@ -10,6 +10,9 @@ import java.util.List;
 
 /**
  * Represents a channel that belongs to a {@link Guild}.
+ * <p>
+ * This interface provides common functionality for all guild-based channels,
+ * including permission management, positioning, and invite creation.
  */
 public interface GuildChannel extends Channel {
     /**
@@ -50,4 +53,47 @@ public interface GuildChannel extends Channel {
      * @return A {@link RestAction} that resolves to {@code Void}.
      */
     RestAction<Void> deletePermissionOverride(String targetId);
+
+    /**
+     * Moves this channel to a different category.
+     *
+     * @param categoryId The ID of the new parent category, or {@code null} to remove it from a category.
+     * @return A {@link RestAction} that resolves to {@code Void}.
+     */
+    RestAction<Void> setParent(String categoryId);
+
+    /**
+     * Retrieves the parent {@link Category} of this channel.
+     * <p>
+     * This is a convenience method that resolves the {@link #getParentId()} using the Guild cache.
+     *
+     * @return The parent {@link Category}, or {@code null} if this channel is not in a category.
+     */
+    default Category getCategory() {
+        String parentId = getParentId();
+        return parentId == null ? null : getGuild().getCategoryById(parentId);
+    }
+
+    /**
+     * Sets the name of this channel.
+     *
+     * @param name The new name for the channel.
+     * @return A {@link RestAction} that resolves to {@code Void}.
+     */
+    RestAction<Void> setName(String name);
+
+    /**
+     * Sets the position of this channel in the guild's channel list.
+     *
+     * @param position The new zero-based index.
+     * @return A {@link RestAction} that resolves to {@code Void}.
+     */
+    RestAction<Void> setPosition(int position);
+
+    /**
+     * Creates a new invite for this channel.
+     *
+     * @return A {@link RestAction} that resolves to the invite code (String).
+     */
+    RestAction<String> createInvite();
 }

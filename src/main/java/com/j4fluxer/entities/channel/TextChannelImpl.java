@@ -2,7 +2,6 @@ package com.j4fluxer.entities.channel;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.j4fluxer.entities.PermissionOverwrite;
-
 import com.j4fluxer.entities.guild.Guild;
 import com.j4fluxer.entities.message.Message;
 import com.j4fluxer.entities.message.MessageImpl;
@@ -22,11 +21,15 @@ public class TextChannelImpl extends AbstractChannel implements TextChannel {
         super(id, guild, requester);
     }
 
-    @Override public ChannelType getType() { return ChannelType.TEXT; }
+    @Override
+    public ChannelType getType() {
+        return ChannelType.TEXT;
+    }
 
     @Override
     public String getTopic() {
-        return (json != null && json.has("topic") && !json.get("topic").isNull()) ? json.get("topic").asText() : null;
+        return (json != null && json.has("topic") && !json.get("topic").isNull())
+                ? json.get("topic").asText() : null;
     }
 
     @Override
@@ -37,12 +40,28 @@ public class TextChannelImpl extends AbstractChannel implements TextChannel {
     @Override
     public RestAction<Message> sendMessage(String content) {
         Route.CompiledRoute route = Route.SEND_MESSAGE.compile(this.id);
+
         return new RestAction<Message>(requester, route) {
             @Override
             protected Message handleResponse(String responseJson) throws Exception {
                 return new MessageImpl(mapper.readTree(responseJson), requester);
             }
         }.setBody(new MessagePayload(content));
+    }
+
+    @Override
+    public RestAction<Void> setTopic(String topic) {
+        return modifyChannel("topic", topic);
+    }
+
+    @Override
+    public RestAction<Void> setNSFW(boolean nsfw) {
+        return modifyChannel("nsfw", nsfw);
+    }
+
+    @Override
+    public RestAction<Void> setSlowmode(int seconds) {
+        return modifyChannel("rate_limit_per_user", seconds);
     }
 
     @Override

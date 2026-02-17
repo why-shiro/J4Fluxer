@@ -24,4 +24,10 @@ public interface TextChannel extends GuildChannel {
      * @return A {@link RestAction} that resolves to the sent {@link Message}.
      */
     RestAction<Message> sendMessage(String content);
+
+    RestAction<Void> setTopic(String topic);
+
+    RestAction<Void> setNSFW(boolean nsfw);
+
+    RestAction<Void> setSlowmode(int seconds);
 }
