@@ -24,23 +24,52 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 /**
- * Handles the WebSocket connection to the Fluxer Gateway.
- * Manages heartbeats, identification, and event dispatching.
+ * The WebSocket client responsible for maintaining a persistent connection with the Fluxer Gateway.
+ *
+ * <p>This class handles the core Gateway protocol, including:
+ * <ul>
+ *     <li>Authentication (Identify)</li>
+ *     <li>Connection keep-alive (Heartbeats)</li>
+ *     <li>Real-time event parsing and dispatching</li>
+ *     <li>Presence and status updates</li>
+ * </ul>
+ * </p>
  */
 public class GatewayClient extends WebSocketClient {
+
+    /** The authentication token for the Fluxer bot. */
     private final String token;
+
+    /** The core API implementation instance. */
     private final FluxerImpl api;
+
+    /** JSON mapper for converting gateway payloads into data nodes. */
     private final ObjectMapper mapper = new ObjectMapper();
 
+    /** Timer used to send periodic heartbeats to the Fluxer Gateway. */
     private Timer heartbeatTimer;
+
+    /** The target URI for the Fluxer Gateway WebSocket connection. */
     private static final URI GATEWAY_URI = URI.create("wss://gateway.fluxer.app/?v=1&encoding=json&compress=none");
 
+    /**
+     * Constructs a new {@code GatewayClient} and prepares the WebSocket connection.
+     *
+     * @param token The bot token used for authentication.
+     * @param api   The {@link FluxerImpl} instance that will handle dispatched events.
+     */
     public GatewayClient(String token, FluxerImpl api) {
         super(GATEWAY_URI);
         this.token = token;
         this.api = api;
     }
 
+    /**
+     * Called when the WebSocket connection is successfully opened.
+     * Initiates the Fluxer 'Identify' handshake.
+     *
+     * @param handshakedata Information about the server handshake.
+     */
     @Override
     public void onOpen(ServerHandshake handshakedata) {
         System.out.println("[LOG] Gateway Connection Successful.");
@@ -48,8 +77,9 @@ public class GatewayClient extends WebSocketClient {
     }
 
     /**
-     * Sends a Presence Update (OpCode 3) to change the bot's status.
-     * @param status The new status (ONLINE, DND, IDLE, etc.)
+     * Sends a Presence Update (OpCode 3) to the Fluxer Gateway to change the bot's status.
+     *
+     * @param status The new {@link OnlineStatus} (e.g., ONLINE, DND, IDLE).
      */
     public void setPresence(OnlineStatus status) {
         if (!isOpen()) {
@@ -58,7 +88,7 @@ public class GatewayClient extends WebSocketClient {
         }
 
         JSONObject payload = new JSONObject();
-        payload.put("op", 3);
+        payload.put("op", 3); // Presence Update OpCode
 
         JSONObject d = new JSONObject();
         d.put("since", JSONObject.NULL);
@@ -72,6 +102,13 @@ public class GatewayClient extends WebSocketClient {
         System.out.println("[GATEWAY] Status Changed: " + status.getKey());
     }
 
+    /**
+     * Handles incoming messages from the Fluxer Gateway.
+     * <p>Parses OpCodes (like Heartbeat requests) and dispatches typed events
+     * based on the 't' field in the Gateway payload.</p>
+     *
+     * @param message The raw JSON message received from the Gateway.
+     */
     @Override
     public void onMessage(String message) {
         try {
@@ -84,7 +121,7 @@ public class GatewayClient extends WebSocketClient {
                 d = mapper.readTree(json.get("d").toString());
             }
 
-            // --- 1. HEARTBEAT SETUP (OpCode 10) ---
+            // OpCode 10: Hello - Received upon connection to setup heartbeats
             if (op == 10 && d != null) {
                 long interval = d.get("heartbeat_interval").asLong();
                 startHeartbeat(interval);
@@ -95,14 +132,13 @@ public class GatewayClient extends WebSocketClient {
 
             Event event = null;
 
-            // --- 2. EVENT DISPATCHING ---
+            // Dispatch events based on Fluxer Event Type
             switch (type) {
                 case "READY":
                     System.out.println("[LOG] Login Successful: " + d.get("user").get("username").asText());
                     event = new ReadyEvent(api, d);
                     break;
 
-                // --- MESSAGE EVENTS ---
                 case "MESSAGE_CREATE":
                     Message msg = new MessageImpl(d, api.getRequester());
                     event = new MessageReceivedEvent(api, msg);
@@ -119,6 +155,9 @@ public class GatewayClient extends WebSocketClient {
                 case "MESSAGE_REACTION_ADD":
                     event = new MessageReactionAddEvent(api, d);
                     break;
+                case "MESSAGE_REACTION_REMOVE":
+                    event = new MessageReactionRemoveEvent(api, d);
+                    break;
 
                 case "CHANNEL_CREATE":
                 case "CHANNEL_UPDATE":
@@ -129,7 +168,6 @@ public class GatewayClient extends WebSocketClient {
                             guild.updateChannelCache(d);
                         }
                     }
-                    // TODO: Create ChannelCreateEvent / ChannelUpdateEvent classes and fire here
                     break;
 
                 case "CHANNEL_DELETE":
@@ -141,12 +179,9 @@ public class GatewayClient extends WebSocketClient {
                             guild.removeChannelFromCache(cId);
                         }
                     }
-                    // TODO: Create ChannelDeleteEvent class and fire here
                     break;
 
-                // --- GUILD EVENTS ---
                 case "GUILD_CREATE":
-                    // Cache the guild immediately upon receiving data
                     GuildImpl guild = new GuildImpl(d, api.getRequester());
                     api.cacheGuild(guild);
                     event = new GuildJoinEvent(api, d);
@@ -157,7 +192,6 @@ public class GatewayClient extends WebSocketClient {
                     }
                     break;
 
-                // --- MEMBER EVENTS ---
                 case "GUILD_MEMBER_ADD":
                     event = new GuildMemberJoinEvent(api, d);
                     break;
@@ -168,15 +202,13 @@ public class GatewayClient extends WebSocketClient {
                     event = new GuildMemberUpdateEvent(api, d);
                     break;
 
-                // --- BAN EVENTS ---
                 case "GUILD_BAN_ADD":
-                    event = new GuildBanEvent(api, d, true); // True = Banned
+                    event = new GuildBanEvent(api, d, true);
                     break;
                 case "GUILD_BAN_REMOVE":
-                    event = new GuildBanEvent(api, d, false); // False = Unbanned
+                    event = new GuildBanEvent(api, d, false);
                     break;
 
-                // --- ROLE EVENTS ---
                 case "GUILD_ROLE_CREATE":
                     event = new RoleCreateEvent(api, d);
                     break;
@@ -184,13 +216,11 @@ public class GatewayClient extends WebSocketClient {
                     event = new RoleDeleteEvent(api, d);
                     break;
 
-                // --- USER EVENTS ---
                 case "TYPING_START":
                     event = new TypingStartEvent(api, d);
                     break;
 
                 default:
-                    // Ignored events
                     break;
             }
 
@@ -204,17 +234,34 @@ public class GatewayClient extends WebSocketClient {
         }
     }
 
+    /**
+     * Called when the connection to the Fluxer Gateway is closed.
+     * Stops the heartbeat timer.
+     *
+     * @param code   The closure code.
+     * @param reason The reason for closure.
+     * @param remote Whether the closure was initiated by the remote host.
+     */
     @Override
     public void onClose(int code, String reason, boolean remote) {
         System.err.println("[LOG] Connection Closed: " + reason + " (Code: " + code + ")");
         if (heartbeatTimer != null) heartbeatTimer.cancel();
     }
 
+    /**
+     * Called when an error occurs during WebSocket communication.
+     *
+     * @param ex The exception that occurred.
+     */
     @Override
     public void onError(Exception ex) {
         ex.printStackTrace();
     }
 
+    /**
+     * Sends the identification payload (OpCode 2) to authenticate the bot
+     * with the Fluxer Gateway service.
+     */
     private void sendIdentify() {
         JSONObject payload = new JSONObject();
         payload.put("op", 2);
@@ -226,8 +273,6 @@ public class GatewayClient extends WebSocketClient {
             authToken = "Bot " + token;
         }
         d.put("token", authToken);
-
-        // Intents can be set here if Fluxer implements them in the future
         d.put("intents", 0);
 
         JSONObject properties = new JSONObject();
@@ -246,6 +291,12 @@ public class GatewayClient extends WebSocketClient {
         send(payload.toString());
     }
 
+    /**
+     * Starts the heartbeat loop at the interval specified by the Fluxer Gateway.
+     * Ensures the connection is kept alive by sending OpCode 1 periodically.
+     *
+     * @param interval The heartbeat interval in milliseconds.
+     */
     private void startHeartbeat(long interval) {
         if (heartbeatTimer != null) heartbeatTimer.cancel();
         heartbeatTimer = new Timer();

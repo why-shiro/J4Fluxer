@@ -16,20 +16,47 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * The concrete implementation of a {@link Guild} on the Fluxer platform.
+ *
+ * <p>This class manages the internal state of a Fluxer server, including its
+ * roles and a thread-safe cache for channels. It provides implementations
+ * for moderation actions, channel creation, and guild settings modification.</p>
+ */
 public class GuildImpl implements Guild {
+
+    /** The requester used for performing REST API actions. */
     private final Requester requester;
+
+    /** The unique ID of the guild. */
     private final String id;
+
+    /** The name of the guild. */
     private final String name;
+
+    /** The ID of the user who owns this guild. */
     private final String ownerId;
+
+    /** A map of roles within this guild, indexed by their ID. */
     private final Map<String, Role> roles = new HashMap<>();
+
+    /** A thread-safe cache for guild channels, indexed by their ID. */
     private final Map<String, GuildChannel> channelCache = new ConcurrentHashMap<>();
 
+    /**
+     * Constructs a {@code GuildImpl} from the provided JSON data.
+     * <p>Parses guild metadata, roles, and initial channel data to populate the internal state.</p>
+     *
+     * @param json      The {@link JsonNode} containing guild information.
+     * @param requester The {@link Requester} instance for API operations.
+     */
     public GuildImpl(JsonNode json, Requester requester) {
         this.requester = requester;
         this.id = json.get("id").asText();
         this.name = json.has("name") ? json.get("name").asText() : "";
         this.ownerId = json.has("owner_id") && !json.get("owner_id").isNull() ? json.get("owner_id").asText() : null;
 
+        // Populate Roles
         if (json.has("roles") && json.get("roles").isArray()) {
             for (JsonNode roleNode : json.get("roles")) {
                 Role role = new Role(roleNode);
@@ -37,28 +64,20 @@ public class GuildImpl implements Guild {
             }
         }
 
+        // Populate Channel Cache
         if (json.has("channels") && json.get("channels").isArray()) {
             for (JsonNode channelNode : json.get("channels")) {
-                int typeId = channelNode.has("type") ? channelNode.get("type").asInt() : -1;
-                ChannelType type = ChannelType.fromKey(typeId);
-
-                GuildChannel channel = null;
-
-                if (type == ChannelType.TEXT) {
-                    channel = new TextChannelImpl(channelNode, this, requester);
-                } else if (type == ChannelType.VOICE) {
-                    channel = new VoiceChannelImpl(channelNode, this, requester);
-                } else if (type == ChannelType.CATEGORY) {
-                    channel = new CategoryImpl(channelNode, this, requester);
-                }
-
-                if (channel != null) {
-                    channelCache.put(channel.getId(), channel);
-                }
+                updateChannelCache(channelNode);
             }
         }
     }
 
+    /**
+     * Constructs a minimal {@code GuildImpl} with only an ID.
+     *
+     * @param id        The unique ID of the guild.
+     * @param requester The {@link Requester} instance.
+     */
     public GuildImpl(String id, Requester requester) {
         this.requester = requester;
         this.id = id;
@@ -72,7 +91,10 @@ public class GuildImpl implements Guild {
     @Override public String getName() { return name; }
     @Override public String getOwnerId() { return ownerId; }
 
-
+    /**
+     * {@inheritDoc}
+     * <p>If the channel is not in the cache, returns a minimal {@link TextChannelImpl} instance.</p>
+     */
     @Override
     public GuildChannel getGuildChannelById(String id) {
         if (channelCache.containsKey(id)) {
@@ -97,7 +119,6 @@ public class GuildImpl implements Guild {
         return new CategoryImpl(id, this, requester);
     }
 
-
     @Override
     public RestAction<List<Channel>> retrieveChannels() {
         Route.CompiledRoute route = Route.GET_GUILD_CHANNELS.compile(this.id);
@@ -116,6 +137,8 @@ public class GuildImpl implements Guild {
             }
         };
     }
+
+    // --- CHANNEL CREATION ---
 
     @Override
     public RestAction<Category> createCategory(String name) {
@@ -142,6 +165,9 @@ public class GuildImpl implements Guild {
         return createChannel(name, ChannelType.VOICE, parentId, VoiceChannel.class);
     }
 
+    /**
+     * Internal generic method to handle channel creation requests.
+     */
     private <T extends Channel> RestAction<T> createChannel(String name, ChannelType type, String parentId, Class<T> clazz) {
         Route.CompiledRoute route = Route.CREATE_CHANNEL.compile(this.id);
         ChannelCreatePayload payload = new ChannelCreatePayload(name, type.getKey(), parentId);
@@ -156,9 +182,12 @@ public class GuildImpl implements Guild {
         }.setBody(payload);
     }
 
+    // --- MEMBER & MODERATION ---
+
     @Override
     public RestAction<UserProfile> retrieveMemberProfile(String userId) {
         Route.CompiledRoute baseRoute = Route.GET_USER_PROFILE.compile(userId);
+        // Appends the guild_id as a query parameter
         String fullUrl = baseRoute.url + "?guild_id=" + this.id;
         Route.CompiledRoute finalRoute = new Route.CompiledRoute(baseRoute.method, fullUrl);
 
@@ -245,16 +274,15 @@ public class GuildImpl implements Guild {
         return new ArrayList<>(roles.values());
     }
 
-    private RestAction<Void> modifyGuild(String key, Object value) {
-        Route.CompiledRoute route = Route.MODIFY_GUILD.compile(this.id);
-        Map<String, Object> body = new HashMap<>();
-        body.put(key, value);
+    // --- CACHE MANAGEMENT & UPDATES ---
 
-        return new RestAction<Void>(requester, route) {
-            @Override protected Void handleResponse(String json) { return null; }
-        }.setBody(body);
-    }
-
+    /**
+     * Updates or adds a channel to the internal guild cache from a JSON payload.
+     * <p>This is typically called by the {@link com.j4fluxer.internal.gateway.GatewayClient}
+     * when a channel event occurs.</p>
+     *
+     * @param channelNode The {@link JsonNode} containing channel data.
+     */
     public void updateChannelCache(JsonNode channelNode) {
         int typeId = channelNode.has("type") ? channelNode.get("type").asInt() : -1;
         ChannelType type = ChannelType.fromKey(typeId);
@@ -274,8 +302,25 @@ public class GuildImpl implements Guild {
         }
     }
 
+    /**
+     * Removes a channel from the internal guild cache.
+     *
+     * @param channelId The ID of the channel to remove.
+     */
     public void removeChannelFromCache(String channelId) {
         channelCache.remove(channelId);
+    }
+
+    // --- GUILD SETTINGS ---
+
+    private RestAction<Void> modifyGuild(String key, Object value) {
+        Route.CompiledRoute route = Route.MODIFY_GUILD.compile(this.id);
+        Map<String, Object> body = new HashMap<>();
+        body.put(key, value);
+
+        return new RestAction<Void>(requester, route) {
+            @Override protected Void handleResponse(String json) { return null; }
+        }.setBody(body);
     }
 
     @Override public RestAction<Void> setName(String name) { return modifyGuild("name", name); }
@@ -283,6 +328,8 @@ public class GuildImpl implements Guild {
     @Override public RestAction<Void> setAfkTimeout(int seconds) { return modifyGuild("afk_timeout", seconds); }
     @Override public RestAction<Void> setSystemChannelId(String channelId) { return modifyGuild("system_channel_id", channelId); }
     @Override public RestAction<Void> setDefaultNotificationLevel(int level) { return modifyGuild("default_message_notifications", level); }
+
+    // --- PAYLOAD DTOs ---
 
     private static class TimeoutPayload {
         public String communication_disabled_until;
