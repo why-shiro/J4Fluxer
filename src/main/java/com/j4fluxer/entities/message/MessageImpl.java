@@ -49,10 +49,11 @@ public class MessageImpl implements Message {
                 ? json.get("guild_id").asText() : null;
 
         if (json.has("author") && json.get("author").isObject()) {
-            this.author = new UserImpl(json.get("author"));
+            this.author = new UserImpl(json.get("author"), requester);
         } else {
             this.author = null;
         }
+
 
         if (this.author != null && json.has("member")) {
             this.member = new MemberImpl(this.author, json.get("member"));
@@ -63,7 +64,7 @@ public class MessageImpl implements Message {
         this.mentions = new ArrayList<>();
         if (json.has("mentions") && json.get("mentions").isArray()) {
             for (JsonNode mentionNode : json.get("mentions")) {
-                this.mentions.add(new UserImpl(mentionNode));
+                this.mentions.add(new UserImpl(mentionNode, requester));
             }
         }
 

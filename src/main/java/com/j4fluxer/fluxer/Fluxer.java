@@ -2,6 +2,7 @@ package com.j4fluxer.fluxer;
 
 import com.j4fluxer.entities.OnlineStatus;
 import com.j4fluxer.entities.guild.Guild;
+import com.j4fluxer.entities.user.User;
 import com.j4fluxer.internal.requests.RestAction;
 
 /**
@@ -48,5 +49,13 @@ public interface Fluxer {
      * @param status The {@link OnlineStatus} (e.g., ONLINE, DND, IDLE).
      */
     void setStatus(OnlineStatus status);
+
+    /**
+     * Retrieves a User from the Fluxer API by their ID.
+     *
+     * @param userId The ID of the user.
+     * @return A {@link RestAction} that resolves to the {@link User} object.
+     */
+    RestAction<User> retrieveUser(String userId);
 
 }

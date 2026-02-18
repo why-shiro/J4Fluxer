@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.j4fluxer.entities.OnlineStatus;
 import com.j4fluxer.entities.guild.Guild;
 import com.j4fluxer.entities.guild.GuildImpl;
+import com.j4fluxer.entities.user.User;
+import com.j4fluxer.entities.user.UserImpl;
 import com.j4fluxer.internal.json.EntityBuilder;
 import com.j4fluxer.internal.requests.Requester;
 import com.j4fluxer.internal.requests.RestAction;
@@ -158,6 +160,20 @@ public class FluxerImpl implements Fluxer {
         if (gateway != null) {
             gateway.setPresence(status);
         }
+    }
+
+    @Override
+    public RestAction<User> retrieveUser(String userId) {
+        // Route.GET_USER rotasını kullanıyoruz (Bir sonraki adımda tanımlayacağız)
+        Route.CompiledRoute route = Route.GET_USER.compile(userId);
+
+        return new RestAction<User>(requester, route) {
+            @Override
+            protected User handleResponse(String jsonStr) throws Exception {
+                // Requester'ı da veriyoruz ki bu user ile DM açılabilsin
+                return new UserImpl(mapper.readTree(jsonStr), requester);
+            }
+        };
     }
 
     /**
