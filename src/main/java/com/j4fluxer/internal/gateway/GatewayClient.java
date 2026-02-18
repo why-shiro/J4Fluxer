@@ -26,14 +26,13 @@ import java.util.TimerTask;
 /**
  * The WebSocket client responsible for maintaining a persistent connection with the Fluxer Gateway.
  *
- * <p>This class handles the core Gateway protocol, including:
+ * <p>This class handles the core Gateway protocol, including:</p>
  * <ul>
  *     <li>Authentication (Identify)</li>
  *     <li>Connection keep-alive (Heartbeats)</li>
  *     <li>Real-time event parsing and dispatching</li>
  *     <li>Presence and status updates</li>
  * </ul>
- * </p>
  */
 public class GatewayClient extends WebSocketClient {
 

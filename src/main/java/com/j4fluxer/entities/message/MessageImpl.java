@@ -27,14 +27,13 @@ import java.util.stream.Collectors;
  * The concrete implementation of a {@link Message} on the Fluxer platform.
  *
  * <p>This class manages message data received from the Fluxer API, providing
- * advanced functionality such as:
+ * advanced functionality such as:</p>
  * <ul>
  *     <li>Regex-based parsing of channel mentions within the message content.</li>
  *     <li>Resolution of mentioned users, roles, and channels via the internal cache.</li>
  *     <li>URL-safe reaction management for both Unicode and custom emojis.</li>
  *     <li>Asynchronous actions for editing and deleting messages.</li>
  * </ul>
- * </p>
  */
 public class MessageImpl implements Message {
 
