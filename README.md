@@ -43,7 +43,7 @@ You can install J4Fluxer using **JitPack**.
 <dependency>
 	    <groupId>com.github.why-shiro</groupId>
 	    <artifactId>J4Fluxer</artifactId>
-	    <version>alpha-0.1.4</version>
+	    <version>alpha-0.1.5</version>
 	</dependency>
 ```
 
@@ -58,7 +58,7 @@ dependencyResolutionManagement {
 }
 
 dependencies {
-	        implementation 'com.github.why-shiro:J4Fluxer:alpha-0.1.4'
+	        implementation 'com.github.why-shiro:J4Fluxer:alpha-0.1.5'
 	}
 ```
 
