@@ -91,6 +91,18 @@ public class Route {
     /** PATCH request to update guild settings. */
     public static final Route MODIFY_GUILD = new Route(Method.PATCH, "/guilds/{guild_id}");
 
+    /** GET request to retrieve a specific member from a guild. */
+    public static final Route GET_MEMBER = new Route(Method.GET, "/guilds/{guild_id}/members/{user_id}");
+
+    /** POST request to open a DM channel with a user. */
+    public static final Route CREATE_DM = new Route(Method.POST, "/users/@me/channels");
+
+    /** PUT request to pin a message in a channel. */
+    public static final Route PIN_MESSAGE = new Route(Method.PUT, "/channels/{channel_id}/pins/{message_id}");
+
+    /** DELETE request to unpin a message in a channel. */
+    public static final Route UNPIN_MESSAGE = new Route(Method.DELETE, "/channels/{channel_id}/pins/{message_id}");
+
 
     /** The HTTP method required for this route. */
     private final Method method;

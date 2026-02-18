@@ -14,7 +14,8 @@ import java.util.List;
  * Represents a message sent within a Fluxer channel.
  *
  * <p>A message contains text content, author information, and metadata about mentions.
- * It also provides methods to perform actions such as editing, deleting, and managing reactions.</p>
+ * It also provides methods to perform actions such as editing, deleting, managing reactions,
+ * and replying to messages.</p>
  */
 public interface Message {
 
@@ -67,6 +68,32 @@ public interface Message {
      * @return A {@link List} of mentioned {@link User}s.
      */
     List<User> getMentions();
+
+    /**
+     * Returns the message that this message is replying to, if applicable.
+     *
+     * @return The referenced {@link Message}, or {@code null} if this is not a reply
+     *         or the referenced message was deleted/unknown.
+     */
+    Message getReferencedMessage();
+
+    /**
+     * Sends a reply to this message.
+     * <p>By default, this will mention (ping) the author of the original message.</p>
+     *
+     * @param content The text content of the reply.
+     * @return A {@link RestAction} that resolves to the sent reply {@link Message}.
+     */
+    RestAction<Message> reply(String content);
+
+    /**
+     * Sends a reply to this message with an option to mention the author.
+     *
+     * @param content The text content of the reply.
+     * @param mentionRepliedUser If {@code true}, the author will be notified/mentioned.
+     * @return A {@link RestAction} that resolves to the sent reply {@link Message}.
+     */
+    RestAction<Message> reply(String content, boolean mentionRepliedUser);
 
     /**
      * Edits the existing content of this message.
@@ -144,4 +171,28 @@ public interface Message {
      * @return A {@link RestAction} representing the removal.
      */
     RestAction<Void> removeReaction(String userId, String emoji);
+
+    // Arayüzün içine uygun bir yere ekle:
+
+    /**
+     * Checks if this message is currently pinned in the channel.
+     *
+     * @return {@code true} if the message is pinned, {@code false} otherwise.
+     */
+    boolean isPinned();
+
+    /**
+     * Pins this message to the channel.
+     * <p>Pinned messages appear in the channel's "Pinned Messages" list and remain there until removed.</p>
+     *
+     * @return A {@link RestAction} representing the pin operation.
+     */
+    RestAction<Void> pin();
+
+    /**
+     * Unpins this message from the channel.
+     *
+     * @return A {@link RestAction} representing the unpin operation.
+     */
+    RestAction<Void> unpin();
 }

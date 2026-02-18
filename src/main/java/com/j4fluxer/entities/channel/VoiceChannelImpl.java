@@ -27,6 +27,17 @@ public class VoiceChannelImpl extends AbstractChannel implements VoiceChannel {
     }
 
     /**
+     * Constructs a minimal {@code VoiceChannelImpl} with only an ID.
+     *
+     * @param id        The unique ID of the channel.
+     * @param guild     The guild this channel belongs to.
+     * @param requester The requester instance.
+     */
+    public VoiceChannelImpl(String id, Guild guild, Requester requester) {
+        super(id, guild, requester);
+    }
+
+    /**
      * Returns the type of this channel.
      *
      * @return {@link ChannelType#VOICE}.
@@ -44,7 +55,7 @@ public class VoiceChannelImpl extends AbstractChannel implements VoiceChannel {
      */
     @Override
     public int getBitrate() {
-        return json.has("bitrate") ? json.get("bitrate").asInt() : 64000;
+        return (json != null && json.has("bitrate")) ? json.get("bitrate").asInt() : 64000;
     }
 
     /**
@@ -56,7 +67,7 @@ public class VoiceChannelImpl extends AbstractChannel implements VoiceChannel {
      */
     @Override
     public int getUserLimit() {
-        return json.has("user_limit") ? json.get("user_limit").asInt() : 0;
+        return (json != null && json.has("user_limit")) ? json.get("user_limit").asInt() : 0;
     }
 
     /**
@@ -67,7 +78,7 @@ public class VoiceChannelImpl extends AbstractChannel implements VoiceChannel {
      */
     @Override
     public void connect() {
-        // TODO 0.1.4-alpha
+        // TODO: Implement Voice Gateway Connection
         System.out.println("This feature is currently under development. Please check back later.");
     }
 

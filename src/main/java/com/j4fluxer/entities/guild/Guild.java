@@ -1,6 +1,7 @@
 package com.j4fluxer.entities.guild;
 
 import com.j4fluxer.entities.channel.*;
+import com.j4fluxer.entities.member.Member;
 import com.j4fluxer.entities.user.UserProfile;
 import com.j4fluxer.internal.requests.RestAction;
 
@@ -66,11 +67,20 @@ public interface Guild {
     Category getCategoryById(String id);
 
     /**
+     * Retrieves a {@link VoiceChannel} by its ID from the internal cache.
+     *
+     * @param id The ID of the voice channel.
+     * @return The {@link VoiceChannel} object, or {@code null} if not found.
+     */
+    VoiceChannel getVoiceChannelById(String id);
+
+    /**
      * Fetches the complete list of channels belonging to this guild from the Fluxer API.
      *
      * @return A {@link RestAction} providing a list of {@link Channel} objects.
      */
     RestAction<List<Channel>> retrieveChannels();
+
 
     // --- Channel Creation ---
 
@@ -134,12 +144,37 @@ public interface Guild {
     List<Role> getRoles();
 
     /**
+     * Retrieves a {@link Member} from the guild's local cache.
+     *
+     * @param userId The ID of the member (same as User ID).
+     * @return The {@link Member} object, or {@code null} if not currently cached.
+     */
+    Member getMemberById(String userId);
+
+    /**
+     * Manually adds a member to the guild's cache.
+     * <p>This is used internally by events.</p>
+     *
+     * @param member The member object to cache.
+     */
+    void cacheMember(Member member);
+
+    /**
      * Fetches the detailed profile of a member from the Fluxer API.
      *
      * @param userId The ID of the user whose profile is to be retrieved.
      * @return A {@link RestAction} providing the {@link UserProfile}.
      */
     RestAction<UserProfile> retrieveMemberProfile(String userId);
+
+    /**
+     * Fetches a Member object from the Fluxer API.
+     * <p>Use this if the member is not found in the local cache.</p>
+     *
+     * @param userId The ID of the user.
+     * @return A {@link RestAction} providing the {@link Member}.
+     */
+    RestAction<Member> retrieveMember(String userId);
 
     /**
      * Assigns a specific role to a guild member.

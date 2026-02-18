@@ -2,6 +2,9 @@ package com.j4fluxer.entities.guild;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.j4fluxer.entities.channel.*;
+import com.j4fluxer.entities.member.Member;
+import com.j4fluxer.entities.member.MemberImpl;
+import com.j4fluxer.entities.user.UserImpl;
 import com.j4fluxer.entities.user.UserProfile;
 import com.j4fluxer.internal.json.EntityBuilder;
 import com.j4fluxer.internal.requests.Requester;
@@ -42,6 +45,8 @@ public class GuildImpl implements Guild {
 
     /** A thread-safe cache for guild channels, indexed by their ID. */
     private final Map<String, GuildChannel> channelCache = new ConcurrentHashMap<>();
+
+    private final Map<String, Member> memberCache = new ConcurrentHashMap<>();
 
     /**
      * Constructs a {@code GuildImpl} from the provided JSON data.
@@ -120,6 +125,14 @@ public class GuildImpl implements Guild {
     }
 
     @Override
+    public VoiceChannel getVoiceChannelById(String id) {
+        if (channelCache.containsKey(id) && channelCache.get(id) instanceof VoiceChannel) {
+            return (VoiceChannel) channelCache.get(id);
+        }
+        return new VoiceChannelImpl(id, this, requester);
+    }
+
+    @Override
     public RestAction<List<Channel>> retrieveChannels() {
         Route.CompiledRoute route = Route.GET_GUILD_CHANNELS.compile(this.id);
         return new RestAction<List<Channel>>(requester, route) {
@@ -137,6 +150,21 @@ public class GuildImpl implements Guild {
             }
         };
     }
+
+    @Override
+    public RestAction<Member> retrieveMember(String userId) {
+        Route.CompiledRoute route = Route.GET_MEMBER.compile(this.id, userId);
+        return new RestAction<Member>(requester, route) {
+            @Override
+            protected Member handleResponse(String jsonStr) throws Exception {
+                JsonNode json = mapper.readTree(jsonStr);
+                // Fluxer API usually wraps user data inside the member object
+                UserImpl user = new UserImpl(json.get("user"));
+                return new MemberImpl(user, json);
+            }
+        };
+    }
+
 
     // --- CHANNEL CREATION ---
 
@@ -197,6 +225,16 @@ public class GuildImpl implements Guild {
                 return new UserProfile(mapper.readTree(jsonStr));
             }
         };
+    }
+
+    @Override
+    public Member getMemberById(String userId) {
+        return memberCache.get(userId);
+    }
+
+    @Override
+    public void cacheMember(Member member) {
+        memberCache.put(member.getUser().getId(), member);
     }
 
     @Override
@@ -278,8 +316,7 @@ public class GuildImpl implements Guild {
 
     /**
      * Updates or adds a channel to the internal guild cache from a JSON payload.
-     * <p>This is typically called by the {@link com.j4fluxer.internal.gateway.GatewayClient}
-     * when a channel event occurs.</p>
+     * <p>This is typically called by the GatewayClient when a channel event occurs.</p>
      *
      * @param channelNode The {@link JsonNode} containing channel data.
      */
