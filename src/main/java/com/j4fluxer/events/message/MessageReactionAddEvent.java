@@ -3,15 +3,21 @@ package com.j4fluxer.events.message;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.j4fluxer.entities.channel.TextChannel;
 import com.j4fluxer.entities.guild.Guild;
+import com.j4fluxer.entities.guild.GuildImpl;
 import com.j4fluxer.entities.member.Member;
 import com.j4fluxer.entities.member.MemberImpl;
 import com.j4fluxer.entities.user.User;
 import com.j4fluxer.entities.user.UserImpl;
 import com.j4fluxer.events.Event;
 import com.j4fluxer.fluxer.Fluxer;
+import com.j4fluxer.fluxer.FluxerImpl;
+import com.j4fluxer.internal.requests.Requester;
 
 /**
  * Fired when a user adds a reaction emoji to a message.
+ * <p>
+ * This event provides information about the user, the message, the emoji used,
+ * and the channel/guild where the reaction occurred.
  */
 public class MessageReactionAddEvent extends Event {
     private final String userId;
@@ -37,8 +43,23 @@ public class MessageReactionAddEvent extends Event {
 
         if (data.has("member")) {
             JsonNode memberNode = data.get("member");
-            User user = new UserImpl(memberNode.get("user"));
-            this.member = new MemberImpl(user, memberNode);
+            Requester requester = ((FluxerImpl) api).getRequester();
+
+            // Create User with API access
+            User user = new UserImpl(memberNode.get("user"), requester);
+
+            // Resolve Guild Context
+            Guild guildContext = null;
+            if (this.guildId != null) {
+                guildContext = api.getGuildById(this.guildId);
+                // If not in cache, create a minimal instance to allow actions
+                if (guildContext == null) {
+                    guildContext = new GuildImpl(this.guildId, requester);
+                }
+            }
+
+            // Create Member with full context (User, JSON, Guild, Requester)
+            this.member = new MemberImpl(user, memberNode, guildContext, requester);
         } else {
             this.member = null;
         }
@@ -65,7 +86,7 @@ public class MessageReactionAddEvent extends Event {
     /**
      * Retrieves the member who added the reaction.
      *
-     * @return The {@link Member}, or {@code null} if not in a guild.
+     * @return The {@link Member}, or {@code null} if not in a guild (e.g., DM).
      */
     public Member getMember() { return member; }
 
@@ -76,7 +97,7 @@ public class MessageReactionAddEvent extends Event {
      */
     public User getUser() {
         if (member != null) return member.getUser();
-        // Future implementation: Fetch user from cache/API if member is null
+        // If needed, fetch user from API using getFluxer().retrieveUser(userId)
         return null;
     }
 

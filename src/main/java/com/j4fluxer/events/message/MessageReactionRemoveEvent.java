@@ -3,11 +3,15 @@ package com.j4fluxer.events.message;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.j4fluxer.entities.channel.TextChannel;
 import com.j4fluxer.entities.guild.Guild;
+import com.j4fluxer.entities.guild.GuildImpl;
 import com.j4fluxer.entities.member.Member;
 import com.j4fluxer.entities.member.MemberImpl;
+import com.j4fluxer.entities.user.User;
 import com.j4fluxer.entities.user.UserImpl;
 import com.j4fluxer.events.Event;
 import com.j4fluxer.fluxer.Fluxer;
+import com.j4fluxer.fluxer.FluxerImpl;
+import com.j4fluxer.internal.requests.Requester;
 
 /**
  * Represents an event that is triggered when a user removes a reaction from a message.
@@ -50,8 +54,23 @@ public class MessageReactionRemoveEvent extends Event {
 
         if (data.has("member")) {
             JsonNode memberNode = data.get("member");
-            UserImpl user = new UserImpl(memberNode.get("user"));
-            this.member = new MemberImpl(user, memberNode);
+            Requester requester = ((FluxerImpl) api).getRequester();
+
+            // Create User with API access
+            User user = new UserImpl(memberNode.get("user"), requester);
+
+            // Resolve Guild Context
+            Guild guildContext = null;
+            if (this.guildId != null) {
+                guildContext = api.getGuildById(this.guildId);
+                // If not in cache, create a minimal instance to allow actions
+                if (guildContext == null) {
+                    guildContext = new GuildImpl(this.guildId, requester);
+                }
+            }
+
+            // Create Member with full context (User, JSON, Guild, Requester)
+            this.member = new MemberImpl(user, memberNode, guildContext, requester);
         } else {
             this.member = null;
         }

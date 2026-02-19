@@ -5,6 +5,7 @@ import com.j4fluxer.entities.channel.GuildChannel;
 import com.j4fluxer.entities.channel.TextChannel;
 import com.j4fluxer.entities.channel.VoiceChannel;
 import com.j4fluxer.entities.guild.Guild;
+import com.j4fluxer.entities.guild.GuildImpl; // Minimal Guild oluşturmak için lazım
 import com.j4fluxer.entities.guild.Role;
 import com.j4fluxer.entities.member.Member;
 import com.j4fluxer.entities.member.MemberImpl;
@@ -54,8 +55,17 @@ public class MessageImpl implements Message {
             this.author = null;
         }
 
+        Guild guildContext = null;
+        if (this.guildId != null) {
+            guildContext = requester.getApi().getGuildById(this.guildId);
+            if (guildContext == null) {
+                // Cache'de yoksa, işlem yapabilmek için (kick/ban vb.) sadece ID içeren minimal bir Guild oluşturuyoruz.
+                guildContext = new GuildImpl(this.guildId, requester);
+            }
+        }
+
         if (this.author != null && json.has("member")) {
-            this.member = new MemberImpl(this.author, json.get("member"));
+            this.member = new MemberImpl(this.author, json.get("member"), guildContext, requester);
         } else {
             this.member = null;
         }
@@ -73,7 +83,6 @@ public class MessageImpl implements Message {
                 this.mentionedRoleIds.add(roleIdNode.asText());
             }
         }
-
 
         if (json.has("referenced_message") && !json.get("referenced_message").isNull()) {
             this.referencedMessage = new MessageImpl(json.get("referenced_message"), requester);
@@ -249,7 +258,7 @@ public class MessageImpl implements Message {
         return requester.getApi().getGuildById(this.guildId);
     }
 
-    // --- PAYLOAD SINIFLARI ---
+    // --- PAYLOAD ---
 
     private static class EditPayload {
         public String content;
