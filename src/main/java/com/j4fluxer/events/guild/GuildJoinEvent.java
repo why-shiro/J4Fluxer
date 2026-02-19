@@ -15,9 +15,16 @@ public class GuildJoinEvent extends Event {
 
     public GuildJoinEvent(Fluxer api, JsonNode data) {
         super(api);
-        this.guild = new GuildImpl(data, ((FluxerImpl)api).getRequester());
+        this.guild = new GuildImpl(data, ((FluxerImpl) api).getRequester());
+        ((FluxerImpl) api).cacheGuild(this.guild);
     }
 
-    /** @return The {@link Guild} object representing the joined server. */
-    public Guild getGuild() { return guild; }
+    /**
+     * Retrieves the Guild object representing the joined server.
+     *
+     * @return The {@link Guild} object.
+     */
+    public Guild getGuild() {
+        return guild;
+    }
 }
