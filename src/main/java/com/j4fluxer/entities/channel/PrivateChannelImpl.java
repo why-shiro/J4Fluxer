@@ -11,26 +11,35 @@ import com.j4fluxer.internal.requests.Route;
 
 public class PrivateChannelImpl implements PrivateChannel {
     private final String id;
-    private final User user; // Karşıdaki kişi
+    private final User user;
     private final Requester requester;
 
+    /**
+     * Create a DM channel from JSON data.
+     */
     public PrivateChannelImpl(JsonNode json, Requester requester) {
         this.requester = requester;
         this.id = json.get("id").asText();
-
-        // DM kanal bilgisinde "recipients" listesi olur.
-        // Bot kendisi hariç diğer kişiyi bulmalı.
         if (json.has("recipients") && json.get("recipients").isArray()) {
             JsonNode recipients = json.get("recipients");
             if (recipients.size() > 0) {
-                // Genelde ilk kişi hedeftir
-                this.user = new UserImpl(recipients.get(0));
+                this.user = new UserImpl(recipients.get(0), requester);
             } else {
                 this.user = null;
             }
         } else {
             this.user = null;
         }
+    }
+
+    /**
+     * Creates a manual DM channel.
+     * This constructor is used for PrivateMessageReceivedEvent.
+     */
+    public PrivateChannelImpl(String id, User user, Requester requester) {
+        this.id = id;
+        this.user = user;
+        this.requester = requester;
     }
 
     @Override
@@ -50,8 +59,13 @@ public class PrivateChannelImpl implements PrivateChannel {
 
     @Override
     public RestAction<Void> delete() {
-        //TODO
-        return null;
+        Route.CompiledRoute route = Route.DELETE_CHANNEL.compile(this.id);
+        return new RestAction<Void>(requester, route) {
+            @Override
+            protected Void handleResponse(String jsonStr) throws Exception {
+                return null;
+            }
+        };
     }
 
     @Override

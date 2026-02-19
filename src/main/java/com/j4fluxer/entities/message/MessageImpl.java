@@ -54,7 +54,6 @@ public class MessageImpl implements Message {
             this.author = null;
         }
 
-
         if (this.author != null && json.has("member")) {
             this.member = new MemberImpl(this.author, json.get("member"));
         } else {

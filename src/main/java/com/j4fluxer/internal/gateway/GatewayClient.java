@@ -140,7 +140,12 @@ public class GatewayClient extends WebSocketClient {
 
                 case "MESSAGE_CREATE":
                     Message msg = new MessageImpl(d, api.getRequester());
-                    event = new MessageReceivedEvent(api, msg);
+
+                    if (msg.getGuildId() != null) {
+                        api.fireEvent(new GuildMessageReceivedEvent(api, msg));
+                    } else {
+                        api.fireEvent(new PrivateMessageReceivedEvent(api, msg));
+                    }
                     break;
                 case "MESSAGE_UPDATE":
                     event = new MessageUpdateEvent(api, d);

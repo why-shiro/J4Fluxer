@@ -103,6 +103,7 @@ public class Route {
     /** DELETE request to unpin a message in a channel. */
     public static final Route UNPIN_MESSAGE = new Route(Method.DELETE, "/channels/{channel_id}/pins/{message_id}");
 
+    /** GET request to retrieve a user's information. */
     public static final Route GET_USER = new Route(Method.GET, "/users/{user_id}");
 
 
