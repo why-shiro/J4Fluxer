@@ -197,7 +197,7 @@ public interface Message {
     RestAction<Void> unpin();
 
     /**
-     * Extracts the raw ID from a mention string (e.g., "<@12345>" -> "12345").
+     * Extracts the raw ID from a mention string (e.g., {@code <@12345>} -> "12345").
      * <p>If the input is not a mention, it returns the input as-is (assuming it's already an ID).</p>
      *
      * @param mention The mention string or ID.
