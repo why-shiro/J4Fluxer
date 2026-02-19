@@ -45,7 +45,11 @@ public class MemberImpl implements Member {
         }
     }
 
-    // Deprecated/Legacy constructor for partial objects
+    /**
+     * Legacy constructor for creating partial Member objects (No API Access).
+     * @param user The user object.
+     * @param memberJson The member JSON data.
+     */
     public MemberImpl(User user, JsonNode memberJson) {
         this(user, memberJson, null, null);
     }
@@ -128,7 +132,6 @@ public class MemberImpl implements Member {
         checkContext(); checkApi();
         Route.CompiledRoute route = Route.MODIFY_MEMBER.compile(guild.getId(), user.getId());
 
-        // Payload: { "nick": "NewName" } or { "nick": null }
         Map<String, String> body = new HashMap<>();
         body.put("nick", nickname);
 

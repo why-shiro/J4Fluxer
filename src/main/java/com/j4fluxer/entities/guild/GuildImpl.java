@@ -21,47 +21,23 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The concrete implementation of a {@link Guild} on the Fluxer platform.
- *
- * <p>This class manages the internal state of a Fluxer server, including its
- * roles and a thread-safe cache for channels. It provides implementations
- * for moderation actions, channel creation, and guild settings modification.</p>
  */
 public class GuildImpl implements Guild {
 
-    /** The requester used for performing REST API actions. */
     private final Requester requester;
-
-    /** The unique ID of the guild. */
     private final String id;
-
-    /** The name of the guild. */
     private final String name;
-
-    /** The ID of the user who owns this guild. */
     private final String ownerId;
-
-    /** A map of roles within this guild, indexed by their ID. */
     private final Map<String, Role> roles = new HashMap<>();
-
-    /** A thread-safe cache for guild channels, indexed by their ID. */
     private final Map<String, GuildChannel> channelCache = new ConcurrentHashMap<>();
-
     private final Map<String, Member> memberCache = new ConcurrentHashMap<>();
 
-    /**
-     * Constructs a {@code GuildImpl} from the provided JSON data.
-     * <p>Parses guild metadata, roles, and initial channel data to populate the internal state.</p>
-     *
-     * @param json      The {@link JsonNode} containing guild information.
-     * @param requester The {@link Requester} instance for API operations.
-     */
     public GuildImpl(JsonNode json, Requester requester) {
         this.requester = requester;
         this.id = json.get("id").asText();
         this.name = json.has("name") ? json.get("name").asText() : "";
         this.ownerId = json.has("owner_id") && !json.get("owner_id").isNull() ? json.get("owner_id").asText() : null;
 
-        // Populate Roles
         if (json.has("roles") && json.get("roles").isArray()) {
             for (JsonNode roleNode : json.get("roles")) {
                 Role role = new Role(roleNode);
@@ -69,7 +45,6 @@ public class GuildImpl implements Guild {
             }
         }
 
-        // Populate Channel Cache
         if (json.has("channels") && json.get("channels").isArray()) {
             for (JsonNode channelNode : json.get("channels")) {
                 updateChannelCache(channelNode);
@@ -77,17 +52,17 @@ public class GuildImpl implements Guild {
         }
     }
 
-    /**
-     * Constructs a minimal {@code GuildImpl} with only an ID.
-     *
-     * @param id        The unique ID of the guild.
-     * @param requester The {@link Requester} instance.
-     */
     public GuildImpl(String id, Requester requester) {
         this.requester = requester;
         this.id = id;
         this.name = "";
         this.ownerId = null;
+    }
+
+    // --- HELPER METHOD TO CLEAN IDs ---
+    private String cleanId(String rawId) {
+        if (rawId == null) return null;
+        return rawId.replaceAll("[^0-9]", "");
     }
 
     // --- CHANNEL RETRIEVAL ---
@@ -96,40 +71,40 @@ public class GuildImpl implements Guild {
     @Override public String getName() { return name; }
     @Override public String getOwnerId() { return ownerId; }
 
-    /**
-     * {@inheritDoc}
-     * <p>If the channel is not in the cache, returns a minimal {@link TextChannelImpl} instance.</p>
-     */
     @Override
     public GuildChannel getGuildChannelById(String id) {
-        if (channelCache.containsKey(id)) {
-            return channelCache.get(id);
+        String cleanId = cleanId(id);
+        if (channelCache.containsKey(cleanId)) {
+            return channelCache.get(cleanId);
         }
-        return new TextChannelImpl(id, this, requester);
+        return new TextChannelImpl(cleanId, this, requester);
     }
 
     @Override
     public TextChannel getTextChannelById(String id) {
-        if (channelCache.containsKey(id) && channelCache.get(id) instanceof TextChannel) {
-            return (TextChannel) channelCache.get(id);
+        String cleanId = cleanId(id);
+        if (channelCache.containsKey(cleanId) && channelCache.get(cleanId) instanceof TextChannel) {
+            return (TextChannel) channelCache.get(cleanId);
         }
-        return new TextChannelImpl(id, this, requester);
+        return new TextChannelImpl(cleanId, this, requester);
     }
 
     @Override
     public Category getCategoryById(String id) {
-        if (channelCache.containsKey(id) && channelCache.get(id) instanceof Category) {
-            return (Category) channelCache.get(id);
+        String cleanId = cleanId(id);
+        if (channelCache.containsKey(cleanId) && channelCache.get(cleanId) instanceof Category) {
+            return (Category) channelCache.get(cleanId);
         }
-        return new CategoryImpl(id, this, requester);
+        return new CategoryImpl(cleanId, this, requester);
     }
 
     @Override
     public VoiceChannel getVoiceChannelById(String id) {
-        if (channelCache.containsKey(id) && channelCache.get(id) instanceof VoiceChannel) {
-            return (VoiceChannel) channelCache.get(id);
+        String cleanId = cleanId(id);
+        if (channelCache.containsKey(cleanId) && channelCache.get(cleanId) instanceof VoiceChannel) {
+            return (VoiceChannel) channelCache.get(cleanId);
         }
-        return new VoiceChannelImpl(id, this, requester);
+        return new VoiceChannelImpl(cleanId, this, requester);
     }
 
     @Override
@@ -153,18 +128,28 @@ public class GuildImpl implements Guild {
 
     @Override
     public RestAction<Member> retrieveMember(String userId) {
-        Route.CompiledRoute route = Route.GET_MEMBER.compile(this.id, userId);
+        String cleanId = cleanId(userId); // <--- BURASI EKSİKTİ
+        Route.CompiledRoute route = Route.GET_MEMBER.compile(this.id, cleanId);
         return new RestAction<Member>(requester, route) {
             @Override
             protected Member handleResponse(String jsonStr) throws Exception {
                 JsonNode json = mapper.readTree(jsonStr);
-                // Fluxer API usually wraps user data inside the member object
-                UserImpl user = new UserImpl(json.get("user"));
-                return new MemberImpl(user, json);
+                UserImpl user = new UserImpl(json.get("user"), requester);
+                return new MemberImpl(user, json, GuildImpl.this, requester);
             }
         };
     }
 
+    // --- CACHE ---
+    @Override
+    public Member getMemberById(String userId) {
+        return memberCache.get(cleanId(userId)); // Cache sorgusunda da temizle
+    }
+
+    @Override
+    public void cacheMember(Member member) {
+        memberCache.put(member.getUser().getId(), member);
+    }
 
     // --- CHANNEL CREATION ---
 
@@ -180,7 +165,7 @@ public class GuildImpl implements Guild {
 
     @Override
     public RestAction<TextChannel> createTextChannel(String name, String parentId) {
-        return createChannel(name, ChannelType.TEXT, parentId, TextChannel.class);
+        return createChannel(name, ChannelType.TEXT, cleanId(parentId), TextChannel.class);
     }
 
     @Override
@@ -190,12 +175,9 @@ public class GuildImpl implements Guild {
 
     @Override
     public RestAction<VoiceChannel> createVoiceChannel(String name, String parentId) {
-        return createChannel(name, ChannelType.VOICE, parentId, VoiceChannel.class);
+        return createChannel(name, ChannelType.VOICE, cleanId(parentId), VoiceChannel.class);
     }
 
-    /**
-     * Internal generic method to handle channel creation requests.
-     */
     private <T extends Channel> RestAction<T> createChannel(String name, ChannelType type, String parentId, Class<T> clazz) {
         Route.CompiledRoute route = Route.CREATE_CHANNEL.compile(this.id);
         ChannelCreatePayload payload = new ChannelCreatePayload(name, type.getKey(), parentId);
@@ -214,8 +196,8 @@ public class GuildImpl implements Guild {
 
     @Override
     public RestAction<UserProfile> retrieveMemberProfile(String userId) {
-        Route.CompiledRoute baseRoute = Route.GET_USER_PROFILE.compile(userId);
-        // Appends the guild_id as a query parameter
+        String cleanId = cleanId(userId);
+        Route.CompiledRoute baseRoute = Route.GET_USER_PROFILE.compile(cleanId);
         String fullUrl = baseRoute.url + "?guild_id=" + this.id;
         Route.CompiledRoute finalRoute = new Route.CompiledRoute(baseRoute.method, fullUrl);
 
@@ -228,18 +210,9 @@ public class GuildImpl implements Guild {
     }
 
     @Override
-    public Member getMemberById(String userId) {
-        return memberCache.get(userId);
-    }
-
-    @Override
-    public void cacheMember(Member member) {
-        memberCache.put(member.getUser().getId(), member);
-    }
-
-    @Override
     public RestAction<Void> kickMember(String userId) {
-        Route.CompiledRoute route = Route.KICK_MEMBER.compile(this.id, userId);
+        String cleanId = cleanId(userId);
+        Route.CompiledRoute route = Route.KICK_MEMBER.compile(this.id, cleanId);
         return new RestAction<Void>(requester, route) {
             @Override protected Void handleResponse(String json) { return null; }
         };
@@ -252,7 +225,8 @@ public class GuildImpl implements Guild {
 
     @Override
     public RestAction<Void> banMember(String userId, int deleteMessageDays, long durationSeconds, String reason) {
-        Route.CompiledRoute route = Route.BAN_MEMBER.compile(this.id, userId);
+        String cleanId = cleanId(userId);
+        Route.CompiledRoute route = Route.BAN_MEMBER.compile(this.id, cleanId);
         BanPayload payload = new BanPayload(deleteMessageDays, durationSeconds, reason);
 
         return new RestAction<Void>(requester, route) {
@@ -262,7 +236,8 @@ public class GuildImpl implements Guild {
 
     @Override
     public RestAction<Void> unbanMember(String userId) {
-        Route.CompiledRoute route = Route.UNBAN_MEMBER.compile(this.id, userId);
+        String cleanId = cleanId(userId);
+        Route.CompiledRoute route = Route.UNBAN_MEMBER.compile(this.id, cleanId);
         return new RestAction<Void>(requester, route) {
             @Override protected Void handleResponse(String json) { return null; }
         };
@@ -270,8 +245,9 @@ public class GuildImpl implements Guild {
 
     @Override
     public RestAction<Void> timeoutMember(String userId, long durationSeconds) {
+        String cleanId = cleanId(userId);
         String isoTime = Instant.now().plus(durationSeconds, ChronoUnit.SECONDS).toString();
-        Route.CompiledRoute route = Route.MODIFY_MEMBER.compile(this.id, userId);
+        Route.CompiledRoute route = Route.MODIFY_MEMBER.compile(this.id, cleanId);
 
         return new RestAction<Void>(requester, route) {
             @Override protected Void handleResponse(String json) { return null; }
@@ -280,7 +256,8 @@ public class GuildImpl implements Guild {
 
     @Override
     public RestAction<Void> removeTimeout(String userId) {
-        Route.CompiledRoute route = Route.MODIFY_MEMBER.compile(this.id, userId);
+        String cleanId = cleanId(userId);
+        Route.CompiledRoute route = Route.MODIFY_MEMBER.compile(this.id, cleanId);
         return new RestAction<Void>(requester, route) {
             @Override protected Void handleResponse(String json) { return null; }
         }.setBody(new TimeoutPayload(null));
@@ -288,7 +265,9 @@ public class GuildImpl implements Guild {
 
     @Override
     public RestAction<Void> addRoleToMember(String userId, String roleId) {
-        Route.CompiledRoute route = Route.ADD_ROLE.compile(this.id, userId, roleId);
+        String cleanUserId = cleanId(userId);
+        String cleanRoleId = cleanId(roleId);
+        Route.CompiledRoute route = Route.ADD_ROLE.compile(this.id, cleanUserId, cleanRoleId);
         return new RestAction<Void>(requester, route) {
             @Override protected Void handleResponse(String json) { return null; }
         };
@@ -296,7 +275,9 @@ public class GuildImpl implements Guild {
 
     @Override
     public RestAction<Void> removeRoleFromMember(String userId, String roleId) {
-        Route.CompiledRoute route = Route.REMOVE_ROLE.compile(this.id, userId, roleId);
+        String cleanUserId = cleanId(userId);
+        String cleanRoleId = cleanId(roleId);
+        Route.CompiledRoute route = Route.REMOVE_ROLE.compile(this.id, cleanUserId, cleanRoleId);
         return new RestAction<Void>(requester, route) {
             @Override protected Void handleResponse(String json) { return null; }
         };
@@ -304,7 +285,7 @@ public class GuildImpl implements Guild {
 
     @Override
     public Role getRoleById(String id) {
-        return roles.get(id);
+        return roles.get(cleanId(id));
     }
 
     @Override
@@ -312,14 +293,6 @@ public class GuildImpl implements Guild {
         return new ArrayList<>(roles.values());
     }
 
-    // --- CACHE MANAGEMENT & UPDATES ---
-
-    /**
-     * Updates or adds a channel to the internal guild cache from a JSON payload.
-     * <p>This is typically called by the GatewayClient when a channel event occurs.</p>
-     *
-     * @param channelNode The {@link JsonNode} containing channel data.
-     */
     public void updateChannelCache(JsonNode channelNode) {
         int typeId = channelNode.has("type") ? channelNode.get("type").asInt() : -1;
         ChannelType type = ChannelType.fromKey(typeId);
@@ -339,16 +312,9 @@ public class GuildImpl implements Guild {
         }
     }
 
-    /**
-     * Removes a channel from the internal guild cache.
-     *
-     * @param channelId The ID of the channel to remove.
-     */
     public void removeChannelFromCache(String channelId) {
         channelCache.remove(channelId);
     }
-
-    // --- GUILD SETTINGS ---
 
     private RestAction<Void> modifyGuild(String key, Object value) {
         Route.CompiledRoute route = Route.MODIFY_GUILD.compile(this.id);
@@ -361,13 +327,12 @@ public class GuildImpl implements Guild {
     }
 
     @Override public RestAction<Void> setName(String name) { return modifyGuild("name", name); }
-    @Override public RestAction<Void> setAfkChannelId(String channelId) { return modifyGuild("afk_channel_id", channelId); }
+    @Override public RestAction<Void> setAfkChannelId(String channelId) { return modifyGuild("afk_channel_id", cleanId(channelId)); }
     @Override public RestAction<Void> setAfkTimeout(int seconds) { return modifyGuild("afk_timeout", seconds); }
-    @Override public RestAction<Void> setSystemChannelId(String channelId) { return modifyGuild("system_channel_id", channelId); }
+    @Override public RestAction<Void> setSystemChannelId(String channelId) { return modifyGuild("system_channel_id", cleanId(channelId)); }
     @Override public RestAction<Void> setDefaultNotificationLevel(int level) { return modifyGuild("default_message_notifications", level); }
 
     // --- PAYLOAD DTOs ---
-
     private static class TimeoutPayload {
         public String communication_disabled_until;
         public TimeoutPayload(String timestamp) { this.communication_disabled_until = timestamp; }

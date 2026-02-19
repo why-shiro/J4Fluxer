@@ -195,4 +195,17 @@ public interface Message {
      * @return A {@link RestAction} representing the unpin operation.
      */
     RestAction<Void> unpin();
+
+    /**
+     * Extracts the raw ID from a mention string (e.g., "<@12345>" -> "12345").
+     * <p>If the input is not a mention, it returns the input as-is (assuming it's already an ID).</p>
+     *
+     * @param mention The mention string or ID.
+     * @return The raw ID.
+     */
+    static String parseId(String mention) {
+        if (mention == null) return null;
+        return mention.replaceAll("[^0-9]", "");
+    }
+
 }
